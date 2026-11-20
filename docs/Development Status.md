@@ -75,7 +75,7 @@
 - Current task ID: PROJECT-CLOSE (finalized 2026-11-21; no further agent work planned). M8-TGATE remains the last plan gate — it is NOT ticked because its [HUMAN] lines are still OPEN below, per gate rule 3. All 8 milestones are implemented; a Windows release build was produced, its startup crash was fixed, the code and generated icons were pushed to GitHub, and the project folder was reduced to the files in the latest commit.
 
 ## Last updated
-- 2026-11-21 01:46 +06
+- 2026-11-21 01:47 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -229,7 +229,7 @@
 
 ### [2026-11-21 01:46 +06] KEYS-REDACT — public keys removed from the development log
 - Files: docs/Development Status.md
-- Check: `grep -n "ssh-ed25519 AAA" docs/Development Status.md` → PASS (no matches); keys remain in the local `.pub` files and were supplied to the user in chat.
+- Check: Select-String on the document for the Ed25519 public-key prefix → PASS (no matches); keys remain in the local `.pub` files and were supplied to the user in chat.
 
 ### [2026-11-21 01:40 +06] PROJECT-CLOSE — final handover state
 - Type: docs / finalization

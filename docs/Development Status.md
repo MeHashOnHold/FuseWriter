@@ -75,7 +75,7 @@
 - Current task ID: PROJECT-CLOSE (finalized 2026-11-21; no further agent work planned). M8-TGATE remains the last plan gate — it is NOT ticked because its [HUMAN] lines are still OPEN below, per gate rule 3. All 8 milestones are implemented; a Windows release build was produced, its startup crash was fixed, the code and generated icons were pushed to GitHub, and the project folder was reduced to the files in the latest commit.
 
 ## Last updated
-- 2026-11-21 01:40 +06
+- 2026-11-21 01:46 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -227,6 +227,10 @@
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
 
+### [2026-11-21 01:46 +06] KEYS-REDACT — public keys removed from the development log
+- Files: docs/Development Status.md
+- Check: `grep -n "ssh-ed25519 AAA" docs/Development Status.md` → PASS (no matches); keys remain in the local `.pub` files and were supplied to the user in chat.
+
 ### [2026-11-21 01:40 +06] PROJECT-CLOSE — final handover state
 - Type: docs / finalization
 - Files changed:
@@ -283,9 +287,7 @@
   - `%USERPROFILE%\.ssh\known_hosts` (created) — GitHub's published SSH host keys copied verbatim from GitHub's official fingerprint page (Ed25519 `SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU`, ECDSA `SHA256:p2QAMXNIC1TJYWeIOttrVc98/R1BUFWu3/LiyKgUfQM`, RSA `SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s`).
   - Repo git config (not a tracked file) — `origin` changed from HTTPS to `git@github-mehashonhold:MeHashOnHold/FuseWriter.git`.
   - docs/Development Status.md (modified) — this entry, Last updated.
-- Public keys to register on GitHub (not secrets):
-  - MeHashOnHold: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHdjyDwNy4gDevqjL8gYPbYCGZlx9zBS5bgKQEM/Wz8G FuseWriter-Windows-MeHashOnHold`
-  - StellarEVE: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIALV5IDP63kJ6d/a4baZsHbOSoewn8QTk3cnEJmjDTE/ FuseWriter-Windows-StellarEVE`
+- Public keys are deliberately NOT recorded in this document. They are in `%USERPROFILE%\.ssh\id_ed25519_mehashonhold.pub` and `%USERPROFILE%\.ssh\id_ed25519_stellareve.pub`; the values were given to the user directly in chat at setup time.
 - Commands run and results:
   - `ssh-keygen -t ed25519 -a 100 ... -N ""` → PASS — two 25519 keypairs created; `icacls /inheritance:r /grant:r <user>:(F)` applied to private keys and config.
   - `ssh -G github-mehashonhold` / `ssh -G github-stellareve` → PASS — each alias resolves to `github.com`, user `git`, `identitiesonly yes`, and the correct IdentityFile.

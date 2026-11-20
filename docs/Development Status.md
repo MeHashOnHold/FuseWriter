@@ -75,7 +75,7 @@
 - Current task ID: M8-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). All 8 milestones are now implemented; what remains is the human verification pass across M1–M8. A Windows release build was produced on 2026-11-20 and its startup crash was fixed on 2026-11-21 (see WINDOWS-BUILD and STARTUP-FIX below); nothing in the plan's checklist changed.
 
 ## Last updated
-- 2026-11-21 01:10 +06
+- 2026-11-21 01:27 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -224,6 +224,32 @@
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-21 01:27 +06] SSH-SETUP — two GitHub SSH keys with host aliases (user request, option 3)
+- Type: config
+- Files changed:
+  - `%USERPROFILE%\.ssh\id_ed25519_mehashonhold` + `.pub` (created) — ed25519 key for MeHashOnHold, comment `FuseWriter-Windows-MeHashOnHold`.
+  - `%USERPROFILE%\.ssh\id_ed25519_stellareve` + `.pub` (created) — ed25519 key for StellarEVE, comment `FuseWriter-Windows-StellarEVE`.
+  - `%USERPROFILE%\.ssh\config` (created) — aliases `github-mehashonhold` and `github-stellareve`, both `HostName github.com`, `User git`, `IdentitiesOnly yes` with their own IdentityFile.
+  - `%USERPROFILE%\.ssh\known_hosts` (created) — GitHub's published SSH host keys copied verbatim from GitHub's official fingerprint page (Ed25519 `SHA256:+DiY3wvvV6TuJJhbpZisF/zLDA0zPMSvHdkr4UvCOqU`, ECDSA `SHA256:p2QAMXNIC1TJYWeIOttrVc98/R1BUFWu3/LiyKgUfQM`, RSA `SHA256:uNiVztksCsDhcc0u9e8BujQXVUpKZIDTMczCvj3tD2s`).
+  - Repo git config (not a tracked file) — `origin` changed from HTTPS to `git@github-mehashonhold:MeHashOnHold/FuseWriter.git`.
+  - docs/Development Status.md (modified) — this entry, Last updated.
+- Public keys to register on GitHub (not secrets):
+  - MeHashOnHold: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHdjyDwNy4gDevqjL8gYPbYCGZlx9zBS5bgKQEM/Wz8G FuseWriter-Windows-MeHashOnHold`
+  - StellarEVE: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIALV5IDP63kJ6d/a4baZsHbOSoewn8QTk3cnEJmjDTE/ FuseWriter-Windows-StellarEVE`
+- Commands run and results:
+  - `ssh-keygen -t ed25519 -a 100 ... -N ""` → PASS — two 25519 keypairs created; `icacls /inheritance:r /grant:r <user>:(F)` applied to private keys and config.
+  - `ssh -G github-mehashonhold` / `ssh -G github-stellareve` → PASS — each alias resolves to `github.com`, user `git`, `identitiesonly yes`, and the correct IdentityFile.
+  - `ssh -T git@github-mehashonhold` (BatchMode) → PASS for transport, FAIL for auth as expected: `git@github.com: Permission denied (publickey)` — the public key is not registered on the account yet.
+  - Attempt to add keys via `gh api user/keys` with both available tokens → FAIL — `This API operation needs the "admin:public_key" scope` (404). Key registration must be done by the human in the GitHub web UI.
+- Acceptance criteria:
+  - Two isolated keys and aliases exist locally → PASS.
+  - Repo uses the MeHashOnHold alias → PASS (`git remote -v`).
+  - Push works over SSH → NOT RUN — blocked on the human adding the public key to the MeHashOnHold account at https://github.com/settings/keys; until then, `git push origin main` will fail with `Permission denied (publickey)`. The previous HTTPS credential still works as a fallback if the remote URL is switched back.
+- Verified by: `ssh-keygen`, `ssh -G`, `ssh -T`, `icacls`, `git remote -v`.
+- Result: PARTIAL (local setup DONE; GitHub-side key registration needs the human).
+- Commit: no repo files changed other than this log entry; keys and SSH config live outside the repo.
+- Follow-ups: add the two public keys in the GitHub UI, then run `ssh -T git@github-mehashonhold` (should greet the account) and `git push origin main`.
 
 ### [2026-11-21 01:10 +06] PUSH-CLEANUP — pushed the build to GitHub, committed icons, removed temp files
 - Type: docs / config

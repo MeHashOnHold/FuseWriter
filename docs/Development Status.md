@@ -75,7 +75,7 @@
 - Current task ID: PROJECT-CLOSE (finalized 2026-11-21; no further agent work planned). M8-TGATE remains the last plan gate — it is NOT ticked because its [HUMAN] lines are still OPEN below, per gate rule 3. All 8 milestones are implemented; a Windows release build was produced, its startup crash was fixed, the code and generated icons were pushed to GitHub, and the project folder was reduced to the files in the latest commit.
 
 ## Last updated
-- 2026-11-21 01:54 +06
+- 2026-11-21 02:01 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -226,6 +226,13 @@
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-21 02:01 +06] KEYS-RESET — all SSH keys removed at human request (full reset)
+- Files deleted: `%USERPROFILE%\.ssh\id_ed25519_mehashonhold`, `id_ed25519_mehashonhold.pub`, `id_ed25519_stellareve`, `id_ed25519_stellareve.pub`, `config`, `known_hosts`.
+- What changed: the human asked for a clean slate. All keypairs, the host-alias config, and `known_hosts` were deleted; `C:\Users\Creative Workshop\.ssh` is now an empty directory. No keys were loaded in `ssh-agent` (agent not running), so nothing else needed clearing. A recursive scan of `%USERPROFILE%` found no other real private keys — only CA bundles and library test fixtures.
+- Check: `Get-ChildItem -Force $env:USERPROFILE\.ssh` after deletion → empty. `ssh-add -l` → `Error connecting to agent: No such file or directory` (no agent, no loaded keys).
+- Repo impact: `origin` was pointing at the deleted alias `git@github-mehashonhold:...`; it was repointed to `git@github.com:MeHashOnHold/FuseWriter.git` and the stale `refs/remotes/origin/main` (ce45489) was corrected to the real remote head af18978. No push is possible until a new key exists.
+- Follow-up for human: delete the two old public keys from https://github.com/settings/keys (they are still registered server-side), then generate a fresh key when ready.
 
 ### [2026-11-21 01:54 +06] KEYS-DEFAULT — MeHashOnHold key is now the default for github.com
 - Files: `%USERPROFILE%\.ssh\config`

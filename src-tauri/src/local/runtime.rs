@@ -119,10 +119,21 @@ pub async fn start(
     })
 }
 
+/// Spawn a long-lived background task on Tauri's managed async runtime.
+/// `tokio::spawn` must NOT be used here: this is called from `Builder::setup`
+/// on a thread that has no Tokio runtime yet, where it panics with
+/// "there is no reactor running".
+pub fn spawn_background<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + Send + 'static,
+{
+    tauri::async_runtime::spawn(future);
+}
+
 /// Idle watchdog (Plan.md M6-T04 step 7): every 30 s, stop the runtime
 /// when it has been idle longer than the settings allow.
 pub fn spawn_idle_watcher(app: AppHandle) {
-    tokio::spawn(async move {
+    spawn_background(async move {
         loop {
             tokio::time::sleep(Duration::from_secs(30)).await;
             let state = app.state::<AppState>();
@@ -169,5 +180,13 @@ mod tests {
     #[test]
     fn free_port_returns_nonzero() {
         assert_ne!(free_port(), 0);
+    }
+
+    #[test]
+    fn background_spawn_works_without_a_tokio_runtime() {
+        // A plain #[test] has no Tokio runtime, just like `Builder::setup`.
+        // The old `tokio::spawn` panicked here with "there is no reactor
+        // running" and crashed the app at startup.
+        spawn_background(async {});
     }
 }

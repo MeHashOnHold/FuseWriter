@@ -72,10 +72,10 @@
 
 ## Current milestone and current task ID
 - Current milestone: M8 — Polish, settings, packaging
-- Current task ID: M8-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). All 8 milestones are now implemented; what remains is the human verification pass across M1–M8. A Windows release build was produced on 2026-11-20 (see WINDOWS-BUILD below); nothing in the plan's checklist changed.
+- Current task ID: M8-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). All 8 milestones are now implemented; what remains is the human verification pass across M1–M8. A Windows release build was produced on 2026-11-20 and its startup crash was fixed on 2026-11-21 (see WINDOWS-BUILD and STARTUP-FIX below); nothing in the plan's checklist changed.
 
 ## Last updated
-- 2026-11-20 18:09 +06
+- 2026-11-21 00:50 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -144,7 +144,8 @@
 | M8-T04 | Privacy audit | 2026-11-20 | Steps 1–7 PASS with the plan's exact commands: (1) `grep -rn "println!\|eprintln!\|dbg!" src-tauri/src` -> nothing. (2) `grep -rn "console\.log" src` -> nothing. (3) `grep -rn "localStorage\|sessionStorage" src` -> nothing. (4) `grep -rn "fetch(\|XMLHttpRequest\|WebSocket" src` -> nothing. (5) CSP `connect-src` = `ipc: http://ipc.localhost` only (devCsp adds the dev server on 127.0.0.1:1420, dev-only). (6) settings.json cannot contain the key: the Rust `Settings`/`Cloud` structs have no key field at all (the key exists only in the keychain; no command returns it). (7) `cargo tree --depth 1`: every direct dependency is in Plan Section 5 (note: `zip` is 9.8.0 while Section 5 advises matching harper's ^8 — both majors are in the tree; recorded in Decisions at M6). Steps 8–9 are [HUMAN], see below. |
 | M8-T05 | Package the app | 2026-11-20 | `npm run tauri build` PASS — bundles produced in `src-tauri/target/release/bundle/`: `deb/FuseWriter_0.1.0_amd64.deb` (14.55 MiB), `rpm/FuseWriter-0.1.0-1.x86_64.rpm` (14.56 MiB), `appimage/FuseWriter_0.1.0_amd64.AppImage` (88.66 MiB). Clean-machine install + launch is [HUMAN], see below. |
 | M8-T06 | Final definition-of-done run | 2026-11-20 | Section 14 checked line by line — full table in the M8 change-log entry below. Result: 11 lines PASS on automated evidence, 6 lines PARTIAL (their window/offline/clean-machine parts are [HUMAN] and listed below), 1 line NOT MET (line 18, Roadmap ticking — it can only complete after the human verification pass, by the plan's own gate rule). |
-| WINDOWS-BUILD | Windows release build + cross-platform test fix | 2026-11-20 | `npm run verify` PASS (svelte-check 0 errors, Vitest 161/161, cargo fmt/clippy/test 75+1). `npm run tauri build` PASS — NSIS `FuseWriter_0.1.0_x64-setup.exe` (10.78 MiB) and MSI `FuseWriter_0.1.0_x64_en-US.msi` (13.25 MiB). Clean-machine install/launch is [HUMAN], see below. |
+| WINDOWS-BUILD | Windows release build + cross-platform test fix | 2026-11-20 | `npm run verify` PASS (svelte-check 0 errors, Vitest 161/161, cargo fmt/clippy/test 75+1). `npm run tauri build` PASS — NSIS `FuseWriter_0.1.0_x64-setup.exe` and MSI `FuseWriter_0.1.0_x64_en-US.msi`. Those artifacts were superseded on 2026-11-21 by the fixed rebuild (STARTUP-FIX). Clean-machine install is [HUMAN], see below. |
+| STARTUP-FIX | Fix immediate crash on app launch | 2026-11-21 | Root cause: `spawn_idle_watcher` used `tokio::spawn` from `Builder::setup` (no Tokio runtime yet) → panic at `runtime.rs:125`, exit on launch. Fixed with `tauri::async_runtime::spawn` + regression test. Both debug and release exes now stay running with window title "FuseWriter"; `npm run verify` PASS (Vitest 161/161, Rust 76+1). Rebuilt installers recorded in the change log. |
 
 ## In progress
 - (nothing — M8-TGATE is waiting on the [HUMAN] items below)
@@ -177,7 +178,7 @@
 - OPEN — M8-T02 / M8 gate: changing the dialect re-checks the text with the new dialect; the pause slider changes how soon purple marks appear; Reset all settings restores defaults.
 - OPEN — M8-T04 steps 8–9: with the network disconnected, typing still shows Harper marks and Tab works, and with engine Off a network monitor shows no app traffic; with a local model running, `netstat -an` / `lsof -i` shows llama-server listening only on 127.0.0.1.
 - OPEN — M8-T05 / DoD line 2: install a bundle on a clean machine or account, launch it, type a sentence with a typo, confirm the mark and the Tab fix.
-- OPEN — WINDOWS-BUILD: run `FuseWriter_0.1.0_x64-setup.exe` (or the MSI) on this Windows machine or a clean account, launch FuseWriter, and type `I recieve teh package` to confirm the two red marks and the Tab fix in the packaged app. (Agent built and verified the artifacts; it did not run the installer.)
+- OPEN — WINDOWS-BUILD: run the rebuilt `FuseWriter_0.1.0_x64-setup.exe` (or MSI) on this Windows machine or a clean account, then type `I recieve teh package` to confirm the two red marks and the Tab fix in the packaged app. (Agent built the artifacts and launched both the debug and release exes directly — window title "FuseWriter", no stderr — but did not run the installer and did not type in the window.)
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
@@ -219,9 +220,35 @@
 - 2026-11-20, M2-T04, the four protection regexes are compiled once into `LazyLock<Option<Regex>>` (via `.ok()`) instead of `expect(...)`, keeping the code free of `expect` outside tests per Plan rule 16; a compile failure would return no ranges and fail the fixture tests loudly.
 - 2026-11-20, WINDOWS-BUILD, Windows tool versions: node v26.13.1 / npm 11.20.0 (portable zip in the approved temp dir — neither was installed system-wide), rustc/cargo 1.99.1 `x86_64-pc-windows-msvc`, Visual Studio 2022 Community MSVC 14.44.35207, WebView2 157.0.4341.60. This differs from the Linux CI versions recorded at M1-T01; both build successfully.
 - 2026-11-20, WINDOWS-BUILD, `bundle.targets = "all"` on Windows produced MSI + NSIS only (no AppX/signing, as expected for an unsigned app). Tauri's CLI auto-downloaded and hash-validated WiX 3.14.1 and NSIS 3.13; no manual install of either is needed on a fresh Windows machine with MSVC and WebView2 present. Generated icons were recreated locally with `npx tauri icon assets/app-icon.svg` and left untracked, per README.
+- 2026-11-21, STARTUP-FIX, any task spawned from `Builder::setup` must use `tauri::async_runtime::spawn`, not `tokio::spawn`: there is no Tokio runtime on the setup thread and the latter panics ("there is no reactor running"). The 161 frontend + 76 Rust tests all passed with this bug because no automated test launches the window; a packaged-exe smoke run (launch, check window title and stderr) is required to catch this class of defect.
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-21 00:50 +06] STARTUP-FIX — app crashed immediately on launch; fixed and re-packaged
+- Type: code (bug fix)
+- Files changed:
+  - src-tauri/src/local/runtime.rs (modified) — added `spawn_background()` which uses `tauri::async_runtime::spawn`; `spawn_idle_watcher` now calls it instead of bare `tokio::spawn`. Added regression test `background_spawn_works_without_a_tokio_runtime`.
+  - docs/Development Status.md (modified) — this entry, STARTUP-FIX row, Last updated, revised [HUMAN] item, superseded-artifact note.
+- What changed: The user reported that opening the exe crashed immediately. Running the exe with stderr captured gave the exact cause: `thread 'main' panicked at src\local\runtime.rs:125:5: there is no reactor running, must be called from the context of a Tokio 1.x runtime`. `spawn_idle_watcher` was called from `Builder::setup`, which runs on a thread with no Tokio runtime, so the app panicked during startup before the window could appear. The other two `tokio::spawn` calls are inside `#[tokio::test]` async tests and are safe. This was invisible to the whole automated suite because the previous agent never launched a window (all the launch checks are [HUMAN]).
+- Commands run and results:
+  - Launch of old release exe (stderr captured) → FAIL — panic at `src\local\runtime.rs:125:5`, "there is no reactor running"; same panic in the debug exe. No Windows Application Error event because a Rust panic exits with a code rather than faulting.
+  - `npm run rust:check` → PASS — cargo fmt/clippy clean; 76 unit + 1 integration test passed, including the new `background_spawn_works_without_a_tokio_runtime`.
+  - `cargo build --manifest-path src-tauri/Cargo.toml` → PASS; launched `target\debug\fusewriter.exe` with stderr redirected → PASS — still running after 10 s, main window title "FuseWriter", empty stderr.
+  - `npm run tauri build` → PASS — release rebuilt in 3m 41s; launched `target\release\fusewriter.exe` → PASS — still running after 10 s, main window title "FuseWriter", empty stderr.
+  - `npm run verify` (final) → PASS — svelte-check 0 errors/0 warnings; Vitest 22 files, 161/161; cargo fmt/clippy/test 76 unit + 1 integration passed.
+- Replacement artifacts (`src-tauri/target/release/bundle/`, superseding the 2026-11-20 ones):
+  - `nsis/FuseWriter_0.1.0_x64-setup.exe` — 10.77 MiB, sha256 `b44d36ec8acc71d43158e5efd74caca1c46970e26735619dc38dffea0d69be3d`.
+  - `msi/FuseWriter_0.1.0_x64_en-US.msi` — 13.23 MiB, sha256 `55c2c0c58204d08828bdaedb8d295b1cf69768f10da3c766a664b1af5ee05c94`.
+- Acceptance criteria:
+  - Exe opens without crashing → PASS (both debug and release launched, window titled "FuseWriter", no stderr) — verified by launching the binaries directly.
+  - Regression covered by an automated test → PASS (new test reproduces the no-runtime condition).
+  - Fresh installers available → PASS (NSIS + MSI rebuilt and hashed).
+  - Clean-machine installer run and in-window typing → NOT RUN — [HUMAN] item above.
+- Verified by: launching both exes with redirected stdout/stderr, `Get-Process.MainWindowTitle`, `npm run rust:check`, `npm run verify`, `npm run tauri build`, `Get-FileHash`.
+- Result: DONE (crash fixed and packaged; clean-machine install remains [HUMAN]).
+- Commit: see git log
+- Follow-ups: the user should re-run the new installer (the old install still contains the crashing binary).
 
 ### [2026-11-20 18:09 +06] WINDOWS-BUILD — Windows release build, installers, cross-platform test fix
 - Type: config (plus a test fix)

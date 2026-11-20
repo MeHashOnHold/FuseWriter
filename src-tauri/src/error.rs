@@ -13,6 +13,12 @@ pub enum AppError {
     BadUrl,
     #[error("The API key is empty.")]
     EmptyApiKey,
+    #[error("The download did not match its checksum.")]
+    ChecksumMismatch,
+    #[error("The archive could not be read safely.")]
+    BadArchive,
+    #[error("Not enough free disk space.")]
+    DiskSpace,
     #[error("Internal error.")]
     Internal,
     #[error("{}", .0.message())]
@@ -27,6 +33,9 @@ impl AppError {
             AppError::UnknownDialect => "unknown_dialect",
             AppError::BadUrl => "bad_url",
             AppError::EmptyApiKey => "empty_api_key",
+            AppError::ChecksumMismatch => "checksum_mismatch",
+            AppError::BadArchive => "bad_archive",
+            AppError::DiskSpace => "disk_space",
             AppError::Internal => "internal",
             AppError::Ai(code) => code.as_str(),
         }

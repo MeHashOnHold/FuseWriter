@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getAiProvider, getGrammarProvider } from "./registry";
 import { CloudProvider } from "./cloud";
 import { LocalProvider } from "./local";
+import { localState } from "./localStatus.svelte";
 import type { Settings } from "../types";
 
 function makeSettings(partial: Partial<Settings>): Settings {
@@ -26,11 +27,29 @@ describe("registry", () => {
     expect(getAiProvider(makeSettings({ engine: "off" }))).toBeNull();
   });
 
-  it("local engine gives an on-device provider", () => {
+  it("local engine gives an on-device provider when the model is installed", () => {
+    localState.status = {
+      runtimeInstalled: true,
+      models: [{ id: "gemma-4-e2b", label: "Gemma 4 E2B", installed: true, sizeBytes: 1 }],
+      running: false,
+      activeModelId: null,
+      platformSupported: true,
+    };
     const p = getAiProvider(makeSettings({ engine: "local" }));
     expect(p).toBeInstanceOf(LocalProvider);
     expect(p?.sendsTextOffDevice).toBe(false);
     expect(p?.label).toBe("Gemma 4 E2B");
+  });
+
+  it("local engine gives null when the model is not installed", () => {
+    localState.status = {
+      runtimeInstalled: false,
+      models: [{ id: "gemma-4-e2b", label: "Gemma 4 E2B", installed: false, sizeBytes: 1 }],
+      running: false,
+      activeModelId: null,
+      platformSupported: true,
+    };
+    expect(getAiProvider(makeSettings({ engine: "local" }))).toBeNull();
   });
 
   it("cloud engine gives an off-device provider labelled by host", () => {

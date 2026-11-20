@@ -14,6 +14,7 @@
   import { checkText } from "./lib/ipc";
   import { loadSettings, saveSettings, settings } from "./lib/settings/store.svelte";
   import { getAiProvider } from "./lib/providers/registry";
+  import { refreshLocalStatus } from "./lib/providers/localStatus.svelte";
   import { setConsentHandler } from "./lib/providers/cloud";
   import { AiError, type AiProvider } from "./lib/providers/types";
   import { rewriteWithMode } from "./lib/ai/rewrite";
@@ -194,7 +195,22 @@
   async function onRewrite(): Promise<void> {
     if (!view) return;
     const provider = getAiProvider(settings);
-    if (!provider) return;
+    if (!provider) {
+      if (settings.engine === "local") {
+        const sel = view.state.selection.main;
+        panel = {
+          from: sel.from,
+          to: sel.to,
+          original: "",
+          live: "",
+          proposed: null,
+          busy: false,
+          error: "Local model not installed. Download it in Settings.",
+          notice: null,
+        };
+      }
+      return;
+    }
     const sel = view.state.selection.main;
     let from = sel.from;
     let to = sel.to;
@@ -246,6 +262,7 @@
   onMount(() => {
     if (!hostEl) return;
     void loadSettings();
+    void refreshLocalStatus();
     setConsentHandler((host) => askConsent(host));
     let engine: SuggestionEngine | undefined;
 

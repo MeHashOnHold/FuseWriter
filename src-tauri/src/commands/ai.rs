@@ -1,14 +1,63 @@
-use tauri::State;
 use tauri::ipc::Channel;
+use tauri::{AppHandle, State};
 use tokio_util::sync::CancellationToken;
 
 use crate::error::AppError;
+use crate::local::extract::find_server;
+use crate::local::manifest::Manifest;
+use crate::local::{paths, runtime};
 use crate::providers::AiProvider;
 use crate::providers::openai_compat::{Kind, OpenAiCompatProvider};
 use crate::secrets;
 use crate::settings::{Settings, host_of, is_loopback_host};
 use crate::state::AppState;
 use crate::types::{AiErrorCode, AiEvent, AiRequest};
+
+/// Build the local provider, starting (or restarting) llama-server if
+/// needed (Plan.md M6-T05 step 4). Cloud policy checks never apply.
+async fn ensure_local_provider(
+    app: &AppHandle,
+    state: &State<'_, AppState>,
+    settings: &Settings,
+) -> Result<OpenAiCompatProvider, AppError> {
+    let manifest = Manifest::embedded()?;
+    let model_id = settings.local.model_id.clone();
+    let model = manifest
+        .model(&model_id)
+        .ok_or(AppError::from(AiErrorCode::LocalNotInstalled))?;
+    let mpath = paths::model_path(app, &model.file)?;
+    if !mpath.exists() {
+        return Err(AiErrorCode::LocalNotInstalled.into());
+    }
+    {
+        let guard = state.local.lock().await;
+        if let Some(rt) = guard.as_ref()
+            && rt.model_id == model_id
+        {
+            return OpenAiCompatProvider::new(
+                rt.base_url(),
+                Some(rt.api_key.clone()),
+                model_id.clone(),
+                Kind::Local,
+                Some(0.2),
+            );
+        }
+    }
+    let rdir = paths::runtime_dir(app, &manifest.runtime.tag)?;
+    let server = find_server(&rdir).ok_or(AppError::from(AiErrorCode::LocalNotInstalled))?;
+    state.stop_local().await;
+    let rt = runtime::start(&server, &mpath, &model_id).await?;
+    let provider = OpenAiCompatProvider::new(
+        rt.base_url(),
+        Some(rt.api_key.clone()),
+        model_id.clone(),
+        Kind::Local,
+        Some(0.2),
+    )?;
+    let mut guard = state.local.lock().await;
+    *guard = Some(rt);
+    Ok(provider)
+}
 
 /// Cloud privacy policy, checked before any cloud request.
 /// Pure function so it is unit-testable (Plan.md M4-T05 step 6).
@@ -35,6 +84,7 @@ pub fn check_cloud_policy(
 
 #[tauri::command]
 pub async fn ai_complete(
+    app: AppHandle,
     state: State<'_, AppState>,
     request_id: String,
     request: AiRequest,
@@ -47,31 +97,31 @@ pub async fn ai_complete(
     if request.engine != settings.engine {
         return Err(AiErrorCode::NoEngine.into());
     }
-    if request.engine == "local" {
-        // Replaced by the real local provider in M6.
-        return Err(AiErrorCode::LocalNotInstalled.into());
-    }
-    if request.engine != "cloud" {
+    let provider = if request.engine == "local" {
+        ensure_local_provider(&app, &state, &settings).await?
+    } else if request.engine == "cloud" {
+        let key = secrets::stored_key()?;
+        check_cloud_policy(
+            &settings,
+            key.as_deref().is_some_and(|k| !k.is_empty()),
+            &request.origin,
+        )?;
+        OpenAiCompatProvider::new(
+            settings.cloud.base_url.clone(),
+            key,
+            settings.cloud.model.clone(),
+            Kind::Cloud,
+            settings.cloud.temperature,
+        )?
+    } else {
         return Err(AiErrorCode::NoEngine.into());
-    }
-    let key = secrets::stored_key()?;
-    check_cloud_policy(
-        &settings,
-        key.as_deref().is_some_and(|k| !k.is_empty()),
-        &request.origin,
-    )?;
-    let provider = OpenAiCompatProvider::new(
-        settings.cloud.base_url.clone(),
-        key,
-        settings.cloud.model.clone(),
-        Kind::Cloud,
-        settings.cloud.temperature,
-    )?;
+    };
     let token = CancellationToken::new();
     {
         let mut guard = state.cancels.lock().map_err(|_| AppError::Internal)?;
         guard.insert(request_id.clone(), token.clone());
     }
+    let is_local = request.engine == "local";
     let result = provider
         .chat_stream(&request.prompt, request.max_tokens, token, |t| {
             let _ = on_event.send(AiEvent::Token {
@@ -79,6 +129,12 @@ pub async fn ai_complete(
             });
         })
         .await;
+    if is_local {
+        let mut guard = state.local.lock().await;
+        if let Some(rt) = guard.as_mut() {
+            rt.last_used = std::time::Instant::now();
+        }
+    }
     {
         let mut guard = state.cancels.lock().map_err(|_| AppError::Internal)?;
         guard.remove(&request_id);

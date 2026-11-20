@@ -71,11 +71,11 @@
 ---
 
 ## Current milestone and current task ID
-- Current milestone: M5 — Diff view and modes
-- Current task ID: M5-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M6-T01.
+- Current milestone: M6 — Local model download and sidecar
+- Current task ID: M6-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M7-T01.
 
 ## Last updated
-- 2026-11-20 11:31 +06
+- 2026-11-20 12:03 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -124,9 +124,17 @@
 | M5-T07 | Mode picker and custom presets | 2026-11-20 | `npm run verify` PASS. Persistence is [HUMAN], see below. |
 | M5-T08 | Full rewrite flow | 2026-11-20 | `npm run verify` PASS — protect -> prompt -> stream -> validate -> one retry -> restore; live preview throttled via requestAnimationFrame (<=10 paints/s); 6,000-char cap; "No changes suggested." state. Window behaviour is [HUMAN], see below. |
 | M5-T09 | Text stats and Tools menu | 2026-11-20 | `npm run test` PASS — stats.test.ts 7 cases. Reading speed kept at 238 wpm per the plan's VERIFY note (Brysbaert 2019 average for silent reading). Summarize is [HUMAN], see below. |
+| M6-T01 | Runtime manifest from real downloads | 2026-11-20 | Manifest written with real values (see the M6 change-log entry): llama.cpp tag `b12556`, 4 platform assets downloaded and SHA-256'd locally, Gemma 4 E2B/E4B Q4_0 files from the HuggingFace API (LFS hashes). JSON parses; all sha256 are 64 hex; all URLs https. |
+| M6-T02 | Manifest parsing, paths, download | 2026-11-20 | `cargo test` PASS — manifest tests (embedded manifest parses with real values, URL allowlist), paths test, download tests with wiremock (success + progress, wrong hash rejected and `.part` removed, existing good file skips network, cancel mid-download cleans up). |
+| M6-T03 | Safe archive extraction | 2026-11-20 | `cargo test` PASS — zip and tar.gz extract; zip `../` entry rejected; tar.gz `../` entry rejected (hostile archive crafted at the byte level because the tar writer API refuses `..` paths); find_server. |
+| M6-T04 | llama-server runtime | 2026-11-20 | `cargo test runtime` PASS — build_args binds 127.0.0.1 only and includes `--no-webui`/`--jinja` (both confirmed in the pinned build's `--help`); free_port non-zero. `/health` verified live WITHOUT the key during M6-T08 (HTTP 200). Idle watcher + stop-on-exit wired in lib.rs. Window behaviour is [HUMAN], see below. |
+| M6-T05 | Local commands | 2026-11-20 | `npm run verify` PASS. `local_status`, `local_install` (Channel progress events), `local_cancel_install`, `local_stop`, `local_remove`, `local_remove_runtime`; `ai_complete` local branch starts/restarts the server and streams via the local provider. Free-space pre-check skipped per the task's own fallback — see Known issues. |
+| M6-T06 | Local provider in TS | 2026-11-20 | `npm run verify` PASS — ipc wrappers, shared localStatus store, registry returns null until the selected model is installed (registry tests updated + a not-installed case added); Rewrite then shows "Local model not installed. Download it in Settings." |
+| M6-T07 | Local section in settings | 2026-11-20 | `npm run verify` PASS — model radios with real GB sizes, Download with progress bar (MB + %) and Cancel, Remove with confirmation, status line, unsupported-platform notice. Window behaviour is [HUMAN], see below. |
+| M6-T08 | Real-model smoke test | 2026-11-20 | DONE headlessly (agent route): the pinned llama-server ran the real E2B Q4_0 model (downloaded file's SHA-256 matches the manifest) with the app's exact arguments and the app's own prompt/validate code. Results table in the M6 change-log entry: 5 of 6 cases pass; Expand on a 16-char input fails the length rule even after the retry; no reasoning text in any output. |
 
 ## In progress
-- (nothing — M5-TGATE is waiting on the [HUMAN] items below)
+- (nothing — M6-TGATE is waiting on the [HUMAN] items below)
 
 ## Needs human verification
 (Steps marked [HUMAN] that an agent could not check. A human replaces `OPEN` with `HUMAN-VERIFIED <date>` when done.)
@@ -147,14 +155,19 @@
 - OPEN — M5-T07 / M5 gate: a custom preset can be created, selected, edited, deleted, and survives a restart.
 - OPEN — M5-T08 / M5 gate: all 5 modes work with a cloud key; a URL and a backtick-code word in the input survive unchanged; a frozen word survives.
 - OPEN — M5-T09 / M5 gate: word count, reading time, and readability numbers update in the Tools menu; Summarize works with a cloud key.
+- OPEN — M6-T04 / M6 gate: with a local model installed, the llama-server child process appears when a rewrite runs, stops after the idle timeout, and disappears when the app closes.
+- OPEN — M6-T07 / M6 gate: in Settings, Download E2B shows progress, Cancel works mid-download, and Remove deletes the model.
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
-- Agent environment note: the Linux VM needed the Tauri prerequisites installed (webkit2gtk-4.1 dev etc.) and a locally repacked `libzstd-dev` to work around a distro package version pin (`1.5.5+dfsg2-2build1.1+hatch1`). This affects only the agent's build machine, not the project.
+- Agent environment note: the Linux VM needed the Tauri prerequisites installed (webkit2gtk-4.1 dev etc.) and a locally repacked `libzstd-dev` to work around a distro package version pin (`1.5.5+dfsg2-2build1.1+hatch1`). This affects only the agent's build machine, not the project. (The VM was replaced once during M6 and the prerequisites had to be reinstalled the same way.)
+- M6-T05: the free-space pre-check before downloading is NOT implemented (Plan M6-T05 step 3 allows this): the runtime exposes no portable free-space query and adding a crate for it is forbidden by the same step. A download on a nearly full disk fails partway with a network/write error instead of an upfront `disk_space` error.
+- M6-T08 finding: Expand mode on very short inputs is effectively refused by validation with the real E2B model — expanding "The app is fast." (16 chars) produced 219–238 chars (ratio ~14x) on both the first attempt and the retry, above the Section 10.4 expand ceiling of 3.5x, so the app reports "Couldn't produce a safe rewrite." Longer inputs are unaffected in ratio terms. Raw outputs are in the M6 change-log entry. (1 of 6 smoke cases — below the plan's threshold for an open question.)
 
 ## Open questions for the human
 (Agents: write a question here and STOP when the plan is unclear, wrong, or missing something. Include the task ID.)
-- (none yet)
+- M6-T01 (for the human to confirm, work proceeded with the recorded values): the manifest pins llama.cpp tag `b12556` — the newer `v1.0.0` release (2026-11-13) carries no binary assets, so the newest release WITH the four platform archives was used. Model files are the Q4_0 builds (`gemma-4-E2B-it-Q4_0.gguf`, `gemma-4-E4B-it-Q4_0.gguf`), excluding mmproj/mtp files, per the plan's Section 6 note.
+- M6-T01 / Section 13: the macOS assets used are the stock llama.cpp builds; whether they run on the macOS versions the human wants to support (the plan mentions a macOS 12 floor question in Section 13) is untested — no Mac is available to the agent.
 
 ## Decisions made during development
 (Each entry: date, task ID, decision, reason. Include tool versions recorded in M1-T01/M1-T02 and facts found in VERIFY steps.)
@@ -175,12 +188,67 @@
 - 2026-11-20: secrets uses one shared keyring Entry for the app's single credential — the keyring mock store keeps its data in the entry object, so the plan's mock-based tests only pass with a shared instance; real keychains behave the same.
 - 2026-11-20: the AI engine default is "off" (Harper only) — the privacy-safe reading of Plan Section 6, which gives no explicit default for `engine`.
 - 2026-11-20: reading speed kept at 238 wpm (Plan M5-T09 VERIFY note) — it matches the Brysbaert (2019) meta-analysis average for silent reading of English non-fiction.
+- 2026-11-20, M6-T01, manifest data (all verified live on 2026-11-20): GitHub `releases/latest` is a `v1.0.0` marker release with no binaries, so the pinned tag is `b12556` (2026-11-19), whose assets match the plan's expected names exactly (`llama-b12556-bin-win-cpu-x64.zip`, `-macos-arm64.tar.gz`, `-macos-x64.tar.gz`, `-ubuntu-x64.tar.gz`). All four were downloaded and hashed locally: win 98882a3c…, macos-arm64 eb92254d…, macos-x64 df7cf820…, ubuntu 1a573b60… (full values in the manifest). Models from the HuggingFace API `?blobs=true`: E2B Q4_0 2,841,481,184 bytes sha256 8e30dff3…, E4B Q4_0 4,590,807,392 bytes sha256 a555b900…. The E2B file was later downloaded in full and its SHA-256 matched the manifest value exactly.
+- 2026-11-20, M6-T01 step 5, `llama-server --help` for b12556 confirms: `-m`, `--host`, `--port`, `--api-key`, `-c/--ctx-size`, `-np/--parallel`, `--no-webui`, `--jinja`, `--log-disable` all exist, so build_args includes `--no-webui` and `--jinja`. Live check during M6-T08: `GET /health` returns 200 WITHOUT the API key (the runtime probe still falls back to sending the key on 401/403).
+- 2026-11-20, M6-T02, new crates: sha2 0.11.1, hex 0.4.3, zip 9.8.0 (default features OFF, `deflate` only — the GitHub archives use deflate; this also drops the zstd/bzip2 C backends), flate2 1.1.11, tar 0.4.46, uuid 1.29.3 (feature `v4`).
 - 2026-11-20, M2-T06, Harper flags three spaces (`"   "`) as a Formatting lint ("French spaces are generally not recommended.", replacement `" "`), which conflicts with Plan.md 9.3 case 11 (whitespace-only input -> no marks). `run_check` therefore returns no suggestions for empty or whitespace-only text. The engine never sends such paragraphs anyway (splitParagraphs skips them); this only affects direct command calls.
 - 2026-11-20, M2-T06, perf: `cargo test --release -- --ignored perf` PASS — median 14.54 ms over 50 runs of `run_check` on ~330 words with 5 typos (agent VM, release build). Budget is 50 ms.
 - 2026-11-20, M2-T04, the four protection regexes are compiled once into `LazyLock<Option<Regex>>` (via `.ok()`) instead of `expect(...)`, keeping the code free of `expect` outside tests per Plan rule 16; a compile failure would return no ranges and fail the fixture tests loudly.
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-20 12:03 +06] MILESTONE 6 GATE — Milestone 6 gate checks (automated lines only)
+- Type: test
+- Files changed:
+  - docs/Development Status.md (modified) — this entry, M6 rows, smoke results, [HUMAN] items, known issues, open questions, decisions
+  - docs/Roadmap.md — NOT ticked: the M6 [HUMAN] lines are OPEN (gate rule 3)
+- Commands run and results:
+  - `npm run verify` → PASS (2026-11-20 12:03 +06: svelte-check 0 errors 0 warnings, Vitest 117/117, cargo fmt/clippy/test — 72 unit + 1 integration)
+- Acceptance criteria:
+  - runtime-manifest.json has real URLs and SHA-256 values → PASS (values verified by downloading every asset and the E2B model; human confirmation noted in Open questions)
+  - Download with progress, checksum check, and cancel pass tests → PASS
+  - Archive extraction rejects path traversal (test passes) → PASS
+  - Server starts on 127.0.0.1 with random key, health-checked, stops on idle/exit [HUMAN] → start + health verified headlessly in M6-T08; idle/exit in the app window NOT RUN — OPEN below
+  - Model smoke test results recorded (6 inputs, no reasoning text) → PASS (M6-T08 entry below)
+  - Settings UI download/progress/cancel/remove [HUMAN] → NOT RUN — OPEN below
+- Result: PARTIAL (automated lines PASS; completes when the [HUMAN] lines are verified)
+- Commit: see git log
+- Follow-ups: human runs the M6 window checks; then tick M6 in Roadmap.md. Next task: M7-T01.
+
+### [2026-11-20 12:00 +06] M6-T08 — Real-model smoke test (headless, agent route)
+- Type: test
+- Method: downloaded `gemma-4-E2B-it-Q4_0.gguf` (2,841,481,184 bytes; SHA-256 `8e30dff3ac4c8434c49a7036fa15564bdbb6044e42bf04550bf1a096ad7e6a52` — matches the manifest), ran the pinned `llama-server` b12556 with the app's exact build_args (loopback, random-key equivalent, `-c 4096 -np 1 --no-webui --jinja`), generated the six prompts with the app's own `buildPrompt`/`protectText`, sent them with the app's local request shape (temperature 0.2, `chat_template_kwargs.enable_thinking=false`), and judged the outputs with the app's own `cleanOutput`/`validate`/`restoreText`. `/health` answered 200 without the key. No `<think>` or reasoning text appeared in any output.
+- Results (input -> restored output, validation):
+  - fluent: "The meeting got moved by them to tomorrow because of they were busy." -> "They moved the meeting to tomorrow because they were busy." — PASS (5.6 s)
+  - formal: "Hey, we can't make it, sorry. Can we do it next week?" -> "We are unable to attend. May we reschedule for next week?" — PASS (4.7 s)
+  - concise: "In my personal opinion, I think that we should probably go ahead and start the project as soon as possible." -> "We should start the project as soon as possible." — PASS (5.2 s)
+  - expand: "The app is fast." -> "The application exhibits high speed. This means that when you interact with it, such as typing or performing actions, the response time is very quick, allowing for a seamless and efficient user experience without any noticeable delays." — FAIL (length, ratio ~14x vs the 3.5x ceiling). Retry with the plan's retry suffix also failed length (219 chars). In the app this case ends with "Couldn't produce a safe rewrite. Your text is unchanged."
+  - simplify: "The committee deliberated extensively before reaching a determination." -> "The group talked a lot before they made a decision." — PASS (4.2 s)
+  - protection (fluent): "Please read https://example.com/guide and run `npm install` before Friday." -> identical output; placeholders [[P1]]/[[P2]] intact in the raw answer and the URL and code restored exactly — PASS (validation state "unchanged", i.e. no rewrite suggested; protection held)
+- Result: DONE — 5 of 6 pass, 1 fails (expand/length), below the plan's >2 threshold for a prompt-tuning open question; the expand finding is recorded under Known issues.
+- Follow-ups: none for the agent; the same six inputs can be re-run in the app window under the M6 [HUMAN] checks.
+
+### [2026-11-20 11:58 +06] M6-T01…M6-T07 — Manifest, download, extract, runtime, commands, settings UI
+- Type: code
+- Files changed:
+  - src-tauri/resources/runtime-manifest.json (created) — real b12556 + Gemma 4 Q4_0 values (see Decisions)
+  - src-tauri/src/local/manifest.rs, paths.rs, download.rs, extract.rs, runtime.rs, mod.rs (created) — manifest parsing + URL allowlist; app-data paths; streaming download with SHA-256, `.part` cleanup, cancel token, 200 ms progress throttle; traversal-proof zip/tar.gz extraction; llama-server lifecycle (args, free port, health polling, idle watcher)
+  - src-tauri/src/commands/local.rs (created) — local_status / local_install / local_cancel_install / local_stop / local_remove / local_remove_runtime with InstallEvent channel
+  - src-tauri/src/commands/ai.rs (modified) — local branch: ensure/start/restart the runtime, stream via the local provider, update last_used; cloud policy untouched for local
+  - src-tauri/src/state.rs, error.rs, lib.rs (modified) — local runtime + install-cancel in AppState, stop on RunEvent::Exit, idle watcher spawn, new error codes (checksum_mismatch, bad_archive, disk_space), 6 new commands registered
+  - src-tauri/Cargo.toml (modified) — sha2, hex, zip (deflate only), flate2, tar, uuid
+  - src/lib/types.ts, ipc.ts (modified) — LocalStatus/InstallEvent types and local command wrappers
+  - src/lib/providers/localStatus.svelte.ts (created), registry.ts + registry.test.ts (modified) — installed-gating for the local provider
+  - src/lib/ui/LocalSection.svelte (created), SettingsDialog.svelte, App.svelte (modified) — settings local section (radios, sizes, progress, cancel, remove, status), "Local model not installed" panel message, status refresh on mount
+- Commands run and results:
+  - `npm run verify` → PASS — svelte-check 0 errors 0 warnings, Vitest 117/117, cargo fmt/clippy/test (72 unit + 1 integration; includes 15 new local-module tests)
+  - Live network checks (M6-T01): GitHub latest-release API, four asset downloads + sha256sum, HuggingFace blobs API for both repos, `llama-server --help` flag audit
+- Acceptance criteria:
+  - M6-T01 manifest parses, 64-hex hashes, https URLs → PASS. M6-T02/T03 tests → PASS. M6-T04 arg tests → PASS ([HUMAN] OPEN). M6-T05/T06/T07 builds → PASS ([HUMAN] OPEN)
+- Result: DONE (automated parts)
+- Commit: see git log
+- Follow-ups: M6 [HUMAN] checks; M7-T01 next
 
 ### [2026-11-20 11:31 +06] MILESTONE 5 GATE — Milestone 5 gate checks (automated lines only)
 - Type: test

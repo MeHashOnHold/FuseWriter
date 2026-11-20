@@ -6,6 +6,7 @@ use harper_core::Dialect;
 use tokio_util::sync::CancellationToken;
 
 use crate::harper::HarperEngine;
+use crate::local::runtime::LocalRuntime;
 use crate::settings::Settings;
 
 /// Shared app state. The Harper engine sits behind a mutex because
@@ -16,6 +17,8 @@ pub struct AppState {
     pub settings: Mutex<Settings>,
     pub settings_file: PathBuf,
     pub cancels: Mutex<HashMap<String, CancellationToken>>,
+    pub local: tokio::sync::Mutex<Option<LocalRuntime>>,
+    pub install_cancel: Mutex<Option<CancellationToken>>,
 }
 
 impl AppState {
@@ -25,6 +28,16 @@ impl AppState {
             settings: Mutex::new(Settings::default()),
             settings_file: PathBuf::new(),
             cancels: Mutex::new(HashMap::new()),
+            local: tokio::sync::Mutex::new(None),
+            install_cancel: Mutex::new(None),
+        }
+    }
+
+    /// Stop the local runtime if one is running.
+    pub async fn stop_local(&self) {
+        let mut guard = self.local.lock().await;
+        if let Some(mut rt) = guard.take() {
+            let _ = rt.child.kill().await;
         }
     }
 

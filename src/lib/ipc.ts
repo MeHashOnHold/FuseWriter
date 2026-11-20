@@ -1,5 +1,13 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
-import type { AiEvent, AiRequest, CheckResult, Dialect, Settings } from "./types";
+import type {
+  AiEvent,
+  AiRequest,
+  CheckResult,
+  Dialect,
+  InstallEvent,
+  LocalStatus,
+  Settings,
+} from "./types";
 import { AiError } from "./providers/types";
 
 /** Typed wrappers around the Tauri commands. The webview never builds
@@ -69,4 +77,35 @@ export async function aiComplete(
       reject(new AiError("network", String(e))),
     );
   });
+}
+
+// ---- Local runtime (M6) ----
+
+export function localStatus(): Promise<LocalStatus> {
+  return invoke<LocalStatus>("local_status");
+}
+
+export function localInstall(
+  modelId: string,
+  onEvent: (e: InstallEvent) => void,
+): Promise<void> {
+  const channel = new Channel<InstallEvent>();
+  channel.onmessage = onEvent;
+  return invoke("local_install", { modelId, onEvent: channel });
+}
+
+export function localCancelInstall(): Promise<void> {
+  return invoke("local_cancel_install");
+}
+
+export function localRemove(modelId: string): Promise<void> {
+  return invoke("local_remove", { modelId });
+}
+
+export function localStop(): Promise<void> {
+  return invoke("local_stop");
+}
+
+export function localRemoveRuntime(): Promise<void> {
+  return invoke("local_remove_runtime");
 }

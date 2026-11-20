@@ -1,6 +1,7 @@
 <script lang="ts">
   import { aiTestConnection, deleteApiKey, hasApiKey, setApiKey } from "../ipc";
   import { saveSettings, settings } from "../settings/store.svelte";
+  import LocalSection from "./LocalSection.svelte";
   import PresetEditor from "./PresetEditor.svelte";
 
   let { open, onClose }: { open: boolean; onClose: () => void } = $props();
@@ -103,7 +104,7 @@
   {#if settings.engine === "local"}
     <fieldset>
       <legend>Local</legend>
-      <p class="note">Set up in a later step.</p>
+      <LocalSection />
     </fieldset>
   {/if}
 

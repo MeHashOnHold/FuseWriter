@@ -28,6 +28,27 @@ export interface Suggestion {
   safeToAutoApply: boolean; // ALWAYS false when kind === "rewrite" or source !== "harper"
 }
 
+export interface LocalModelStatus {
+  id: string;
+  label: string;
+  installed: boolean;
+  sizeBytes: number;
+}
+
+export interface LocalStatus {
+  runtimeInstalled: boolean;
+  models: LocalModelStatus[];
+  running: boolean;
+  activeModelId: string | null;
+  platformSupported: boolean;
+}
+
+export type InstallEvent =
+  | { type: "progress"; stage: "runtime" | "model"; downloaded: number; total: number }
+  | { type: "extracting" }
+  | { type: "done" }
+  | { type: "error"; code: string };
+
 export interface RewritePreset {
   id: string; // "fluent" | "formal" | "concise" | "expand" | "simplify" | "custom-<uuid>"
   name: string;

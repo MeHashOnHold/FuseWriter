@@ -1,0 +1,127 @@
+[
+  {
+    "mustInclude": [
+      {
+        "original": "recieve",
+        "replacement": "receive"
+      },
+      {
+        "original": "teh",
+        "replacement": "the"
+      }
+    ],
+    "mustNotMarkInside": [],
+    "name": "spelling pair",
+    "text": "I recieve teh package yesterday."
+  },
+  {
+    "mustInclude": [
+      {
+        "original": "an",
+        "replacement": "a"
+      }
+    ],
+    "mustNotMarkInside": [],
+    "name": "an test",
+    "text": "This is an test."
+  },
+  {
+    "mustInclude": [
+      {
+        "original": "the the",
+        "replacement": "the"
+      }
+    ],
+    "mustNotMarkInside": [],
+    "name": "repetition",
+    "text": "the the cat sat"
+  },
+  {
+    "mustInclude": [],
+    "mustNotMarkInside": [
+      "https://exmaple.com/teh-page"
+    ],
+    "name": "url",
+    "text": "See https://exmaple.com/teh-page for details."
+  },
+  {
+    "mustInclude": [],
+    "mustNotMarkInside": [
+      "npm isntall"
+    ],
+    "name": "inline code",
+    "text": "Run `npm isntall` now."
+  },
+  {
+    "mustInclude": [],
+    "mustNotMarkInside": [
+      "jhon.smtih@exmple.com"
+    ],
+    "name": "email",
+    "text": "Mail jhon.smtih@exmple.com today"
+  },
+  {
+    "mustInclude": [
+      {
+        "original": "recieve",
+        "replacement": "receive"
+      }
+    ],
+    "mustNotMarkInside": [
+      "teh"
+    ],
+    "name": "fenced block",
+    "text": "```\nteh code\n```\nI recieve it."
+  },
+  {
+    "mustInclude": [
+      {
+        "original": "teh",
+        "replacement": "the"
+      }
+    ],
+    "mustNotMarkInside": [],
+    "name": "emoji utf16",
+    "text": "\ud83d\ude00 teh cat"
+  },
+  {
+    "mustInclude": [],
+    "mustNotMarkInside": [],
+    "name": "kowalski",
+    "text": "I met Kowalski yesterday."
+  },
+  {
+    "mustInclude": [
+      {
+        "original": "dont",
+        "replacement": "don't"
+      }
+    ],
+    "mustNotMarkInside": [],
+    "name": "dont",
+    "text": "I dont know."
+  },
+  {
+    "mustInclude": [],
+    "mustNotMarkInside": [],
+    "name": "empty",
+    "text": ""
+  },
+  {
+    "mustInclude": [],
+    "mustNotMarkInside": [],
+    "name": "whitespace only",
+    "text": "   "
+  },
+  {
+    "mustInclude": [
+      {
+        "original": "lauched",
+        "replacement": "latched"
+      }
+    ],
+    "mustNotMarkInside": [],
+    "name": "nasa",
+    "text": "NASA lauched it."
+  }
+]

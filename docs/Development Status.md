@@ -71,11 +71,11 @@
 ---
 
 ## Current milestone and current task ID
-- Current milestone: M1 — Project skeleton and docs
-- Current task ID: M1-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3)
+- Current milestone: M2 — Editor with Harper marks
+- Current task ID: M2-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M3-T01.
 
 ## Last updated
-- 2026-11-20 10:05 +06
+- 2026-11-20 10:48 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -87,15 +87,30 @@
 | M1-T05 | CSS variables and layout skeleton | 2026-11-20 | `npm run build` and `npm run check` PASS. Light/dark + layout appearance is [HUMAN], see below. |
 | M1-T06 | Hash utility (cyrb53) and tests | 2026-11-20 | `npm run test` PASS — 4 tests in hash.test.ts. |
 | M1-T07 | Dialog plugin and window permissions | 2026-11-20 | `npm run verify` PASS, no permission errors. Devtools CSP check is [HUMAN], see below. |
+| M2-T01 | Harper engine wrapper (harper-core =3.2.0) | 2026-11-20 | `cargo test harper` PASS — 3 tests (lint found, core_version == "3.2.0", HarperEngine is Send). API verified in the 3.2.0 source (see Decisions). |
+| M2-T02 | Char-to-UTF-16 offset map | 2026-11-20 | `cargo test mapping` PASS — 5 tests (ASCII, emoji, combining accent, empty, clamp). |
+| M2-T03 | RawSuggestion and Lint conversion | 2026-11-20 | `cargo test convert` PASS — real Harper on both sample texts; `an` -> `a` present. LintKind/Suggestion variant lists recorded in Decisions. |
+| M2-T04 | Protected ranges (URLs, emails, code) | 2026-11-20 | `cargo test protect` PASS — 5 fixture cases in src-tauri/tests/fixtures/protect-cases.json + unclosed-fence test. regex 1.13.2 added. |
+| M2-T05 | Safe-to-auto-apply rules | 2026-11-20 | `cargo test safety` PASS — 8 tests (levenshtein values, teh/recieve safe, Kowalski/NASA/abc123 not safe, Repetition safe). |
+| M2-T06 | check_text command, fixtures, perf test | 2026-11-20 | `cargo test` PASS — 13 fixture cases in harper-cases.json (frozen after reviewed first run, see Decisions). Perf (release, `--ignored perf`): median 14.54 ms over 50 runs for ~330 words with 5 typos, under the 50 ms budget. |
+| M2-T07 | TypeScript types and IPC wrappers | 2026-11-20 | `npm run check` PASS, 0 errors. |
+| M2-T08 | CodeMirror editor | 2026-11-20 | `npm run check` + `npm run build` PASS. Typing/undo/no-native-spellcheck is [HUMAN], see below. |
+| M2-T09 | Mark state, decorations, touched rule | 2026-11-20 | `npm run test` PASS — touch.test.ts 8 cases, suggestionField.test.ts 4 cases. |
+| M2-T10 | Paragraph splitting | 2026-11-20 | `npm run test` PASS — paragraphs.test.ts 7 cases (blank lines, CRLF, fenced block, 12,000-char chunking). |
+| M2-T11 | SuggestionEngine (Harper path) | 2026-11-20 | `npm run test` PASS — SuggestionEngine.test.ts 6 cases (debounce, per-paragraph recheck, cache, stale discard, absolute offsets, dismissed filter) + lru.test.ts 3 cases. Live marks in the window are [HUMAN], see below. |
+| M2-T12 | Bottom bar counts and engine label | 2026-11-20 | `npm run test` + `npm run check` PASS — status.test.ts 2 cases. Bar appearance is [HUMAN], see below. |
 
 ## In progress
-- (nothing — M1-TGATE is waiting on the [HUMAN] items below)
+- (nothing — M2-TGATE is waiting on the [HUMAN] items below)
 
 ## Needs human verification
 (Steps marked [HUMAN] that an agent could not check. A human replaces `OPEN` with `HUMAN-VERIFIED <date>` when done.)
 - OPEN — M1-T04 / M1 gate: `npm run tauri dev` opens a window titled "FuseWriter" showing the app. (Agent is headless; the debug binary builds and links, but no window was seen.)
 - OPEN — M1-T05 / M1 gate: the window shows the thin top bar and bottom bar and follows OS light/dark.
 - OPEN — M1-T07 / M1 gate: devtools console in a dev build shows no CSP errors.
+- OPEN — M2-T08: typing works in the editor, Ctrl/Cmd+Z undoes typing, and there are no browser spellcheck underlines.
+- OPEN — M2-T11 / M2 gate: in `npm run tauri dev`, typing `I recieve teh package` shows red wavy marks under `recieve` and `teh` within ~0.3 s; typing a space after a marked word does not make the mark flicker.
+- OPEN — M2-T12 / M2 gate: the bottom bar shows "2 quick fixes, Tab to fix all" for that sample text and is blank on the left for clean text.
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
@@ -114,9 +129,89 @@
 - 2026-11-20, M1-T03, `src/App.svelte` includes an empty `<script lang="ts"></script>` block: with Svelte 5.58.0 + svelte-check 4.7.8, a script-less App.svelte made svelte-check report "implicitly has an 'any' type" for the import in main.ts, while `npx tsc --noEmit` passed. The empty script block makes svelte-check report 0 errors. Later tasks give App.svelte a real script anyway.
 - 2026-11-20, M1-T04, VERIFY BEFORE USE results: `npx tauri init --help` confirms all flags in the plan exist (`--ci --app-name --window-title --frontend-dist --dev-url --before-dev-command --before-build-command`). Resolved Rust crate versions: tauri 2.12.7 (newest 2.12 patch, as the plan instructs), tauri-build 2.7.6. `devCsp` in tauri.conf.json was accepted — the config generated and the app built with it in place, so it was kept.
 - 2026-11-20, M1-T07, `cargo add tauri-plugin-dialog` resolved tauri-plugin-dialog 2.8.4, matching the npm @tauri-apps/plugin-dialog 2.8.4.
+- 2026-11-20, M2-T01, `cargo search harper-core --limit 1` shows 3.2.0 as the newest version, so the plan's "if a newer version exists" case did not arise; the pin `=3.2.0` stands. VERIFY BEFORE USE results from the harper-core 3.2.0 source: `Document::new_plain_english_curated(text)` exists; `FstDictionary::curated()` returns `Arc<Self>`; `LintGroup::new_curated(dictionary, dialect)` takes those two arguments (the plan named the function only); `Linter::lint(&mut self, &Document) -> Vec<Lint>`; `harper_core::remove_overlaps(&mut Vec<Lint>)` exists; `harper_core::core_version()` returns "3.2.0". `Dialect` variants: American, Canadian, Australian, British, Indian.
+- 2026-11-20, M2-T01, `HarperEngine` IS `Send` (compile-time assert test passes), so no worker thread was needed; the engine lives behind a Mutex in AppState.
+- 2026-11-20, M2-T03, `LintKind` variants in harper-core 3.2.0 (from src/linting/lint_kind.rs): Agreement, BoundaryError, Capitalization, Eggcorn, Enhancement, Formatting, Grammar, Malapropism, Miscellaneous, Nonstandard, Punctuation, Readability, Redundancy, Regionalism, Repetition, Spelling, Style, Typo, Usage, WordChoice, WordOrder. `Typo` is present and maps to Spelling per the plan. `Suggestion` variants: ReplaceWith(Vec<char>), InsertAfter(Vec<char>), Remove — exactly the three the plan expected.
+- 2026-11-20, M2-T05, the safe Grammar kind names were verified against that list: "Capitalization", "Repetition", "Formatting" all exist as written in the plan; no fix needed.
+- 2026-11-20, M2-T06, AppState stores the engine as `Arc<Mutex<HarperEngine>>` (the plan shows `Mutex<HarperEngine>`): the extra `Arc` is needed so the `spawn_blocking` check task can own a handle to the same engine. thiserror 2.0.21 added per the task.
+- 2026-11-20, M2-T06, fixture freeze after the first reviewed run (task step 6): for `NASA lauched it.`, Harper 3.2.0's FIRST suggestion for `lauched` is "latched" (edit distance tie), with "launched" as alternative 2. The fixture's mustInclude was frozen to the real output (`lauched` -> `latched`) and the test additionally asserts "launched" is offered (replacement or alternatives) and the fix is safe, which preserves the intent of Plan.md 9.3 case 12. `NASA` itself is not marked at all.
+- 2026-11-20, M2-T06, Harper flags three spaces (`"   "`) as a Formatting lint ("French spaces are generally not recommended.", replacement `" "`), which conflicts with Plan.md 9.3 case 11 (whitespace-only input -> no marks). `run_check` therefore returns no suggestions for empty or whitespace-only text. The engine never sends such paragraphs anyway (splitParagraphs skips them); this only affects direct command calls.
+- 2026-11-20, M2-T06, perf: `cargo test --release -- --ignored perf` PASS — median 14.54 ms over 50 runs of `run_check` on ~330 words with 5 typos (agent VM, release build). Budget is 50 ms.
+- 2026-11-20, M2-T04, the four protection regexes are compiled once into `LazyLock<Option<Regex>>` (via `.ok()`) instead of `expect(...)`, keeping the code free of `expect` outside tests per Plan rule 16; a compile failure would return no ranges and fail the fixture tests loudly.
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-20 10:48 +06] MILESTONE 2 GATE — Milestone 2 gate checks (automated lines only)
+- Type: test
+- Files changed:
+  - docs/Development Status.md (modified) — this entry, completed-tasks rows M2-T01…M2-T12, M2 decisions, M2 [HUMAN] items
+  - docs/Roadmap.md — NOT ticked: the M2 [HUMAN] lines are OPEN (gate rule 3)
+- What changed: Every automated M2 Roadmap line was checked against real command output. The milestone stays unticked until the human verifies the window behaviour.
+- Commands run and results:
+  - `cargo test --manifest-path src-tauri/Cargo.toml` → PASS — 20 unit tests + 1 fixture integration test (1 perf test ignored by default)
+  - `cargo test --manifest-path src-tauri/Cargo.toml --release -- --ignored perf` → PASS — median 14.54 ms (budget 50 ms)
+  - `npm run test` → PASS — 34 tests in 7 files
+  - `npm run verify` → PASS (final run 2026-11-20 10:47 +06: svelte-check 0 errors, Vitest 34/34, cargo fmt --check, clippy -D warnings, cargo test)
+- Acceptance criteria:
+  - Harper =3.2.0 runs in Rust; fixture tests pass → PASS
+  - Offsets are UTF-16; emoji test passes → PASS (fixture case "emoji utf16": teh at 3..6)
+  - No marks inside URLs, emails, code (tests pass) → PASS
+  - safeToAutoApply rules tested → PASS
+  - Median Harper time for ~300 words under 50 ms (release), recorded → PASS — 14.54 ms
+  - Marks shift with edits and are removed when edited (tests pass) → PASS
+  - Engine caches by paragraph hash and discards stale results (tests pass) → PASS
+  - Typing sample shows two red marks within ~0.3 s [HUMAN] → NOT RUN (headless agent) — OPEN below
+  - Bottom bar shows the quick-fix text and is quiet when clean [HUMAN] → NOT RUN — OPEN below
+- Verified by: commands above
+- Result: PARTIAL (all automated lines PASS; milestone completes when the [HUMAN] lines are verified)
+- Commit: see the M2-TGATE docs commit in git log
+- Follow-ups: human runs the M2 window checks; then tick M2 in Roadmap.md. Next task: M3-T01.
+
+### [2026-11-20 10:40 +06] M2-T01…M2-T12 — Editor with Harper marks (Rust pipeline + CodeMirror + engine)
+- Type: code
+- Files changed:
+  - src-tauri/Cargo.toml (modified) — harper-core =3.2.0 (concurrent), regex 1.13.2, thiserror 2.0.21; src-tauri/Cargo.lock (modified)
+  - src-tauri/src/types.rs (created) — RawSuggestion, RawKind, CheckResult (Section 6 shapes)
+  - src-tauri/src/harper/mod.rs (created) — HarperEngine (LintGroup built once), 3 tests
+  - src-tauri/src/harper/mapping.rs (created) — OffsetMap char -> UTF-16, 5 tests
+  - src-tauri/src/harper/convert.rs (created) — Lint -> RawSuggestion with kind mapping, reason cleanup, safety wiring, 2 tests
+  - src-tauri/src/harper/protect.rs (created) — protected_ranges + drop_protected, fixture-driven tests
+  - src-tauri/src/harper/safety.rs (created) — levenshtein + safe_to_auto_apply, 8 tests
+  - src-tauri/src/error.rs (created) — AppError with string codes, no user text
+  - src-tauri/src/state.rs (created) — AppState with the engine behind Arc<Mutex>
+  - src-tauri/src/commands/mod.rs, src-tauri/src/commands/check.rs (created) — run_check pipeline + check_text command (20,000-char limit, dialect map, spawn_blocking, elapsedMs)
+  - src-tauri/src/lib.rs (modified) — module declarations, .manage(AppState), generate_handler![check_text]
+  - src-tauri/tests/harper_cases.rs (created) — 13 fixture cases + ignored perf test; src-tauri/tests/fixtures/harper-cases.json, src-tauri/tests/fixtures/protect-cases.json (created)
+  - src/lib/types.ts (created) — Section 6 TypeScript types exactly; src/lib/ipc.ts (created) — checkText wrapper
+  - src/lib/editor/createEditor.ts (created) — CodeMirror 6 editor, native spellcheck off, theme from CSS variables
+  - src/lib/editor/touch.ts, touch.test.ts (created) — the touched rule, 8 cases
+  - src/lib/editor/suggestionField.ts, suggestionField.test.ts (created) — marksField, setMarks/removeMarks, mapMarks, 4 cases
+  - src/lib/editor/marks.ts (created) — qw-spell/qw-grammar/qw-ai decorations
+  - src/lib/editor/status.ts, status.test.ts (created) — countFixes, 2 cases
+  - src/lib/engine/paragraphs.ts, paragraphs.test.ts (created) — splitParagraphs with fences and 5,000-char chunking, 7 cases
+  - src/lib/engine/lru.ts, lru.test.ts (created) — Lru cache, 3 cases
+  - src/lib/engine/SuggestionEngine.ts, SuggestionEngine.test.ts (created) — debounced per-paragraph engine, 6 cases
+  - src/lib/ui/Icon.svelte, src/lib/ui/BottomBar.svelte (created) — icon set; bottom bar with fix counts, engine label, word count
+  - src/App.svelte (modified) — editor mounted on #editor-host, engine wired, BottomBar replaces the static footer
+- What changed: The full Harper path now exists end to end: Rust lints text with Harper 3.2.0, converts lints to UTF-16 RawSuggestions, drops marks inside URLs/emails/code, classifies Tab-safe fixes, and serves it all through the check_text command. The frontend has a CodeMirror editor whose marks live in a StateField (shifting with edits, removed when touched), a debounced per-paragraph SuggestionEngine with hash cache and stale-result discard, and a live bottom bar. Two reviewed deviations from a naive reading are recorded in Decisions: the lauched fixture freeze and the whitespace-only guard.
+- Commands run and results:
+  - `cargo test --manifest-path src-tauri/Cargo.toml harper` → PASS (3 tests)
+  - `cargo test --manifest-path src-tauri/Cargo.toml mapping` → PASS (5 tests)
+  - `cargo test --manifest-path src-tauri/Cargo.toml convert` → PASS (2 tests)
+  - `cargo test --manifest-path src-tauri/Cargo.toml protect` → PASS (2 tests, 5 fixture cases)
+  - `cargo test --manifest-path src-tauri/Cargo.toml safety` → PASS (8 tests)
+  - `cargo test --manifest-path src-tauri/Cargo.toml` → PASS (20 unit + 1 integration)
+  - `cargo test --manifest-path src-tauri/Cargo.toml --release -- --ignored perf` → PASS — median 14.54 ms
+  - `npm run test` → PASS — 34 tests, 7 files
+  - `npm run check` → PASS — 0 errors; `npm run build` → PASS
+  - `npm run verify` → PASS (after a cargo fmt pass and one clippy needless_bool fix in safety.rs)
+- Acceptance criteria:
+  - M2-T01: 3 tests pass → PASS. M2-T02: all mapping tests pass → PASS. M2-T03: tests pass, variant lists recorded → PASS. M2-T04: all protect cases pass → PASS. M2-T05: all safety tests pass → PASS. M2-T06: fixture tests pass, perf passes in release, median recorded → PASS. M2-T07: type-check passes → PASS. M2-T08: build passes → PASS ([HUMAN] typing checks OPEN). M2-T09: all tests pass → PASS. M2-T10: tests pass → PASS. M2-T11: tests pass → PASS ([HUMAN] live marks OPEN). M2-T12: tests pass → PASS ([HUMAN] bar text OPEN)
+- Verified by: commands above
+- Result: DONE (automated parts); [HUMAN] parts listed under "Needs human verification"
+- Commit: fce482b (Rust, M2-T01…T06), e618549 (frontend, M2-T07…T12)
+- Follow-ups: M2 [HUMAN] checks; M3-T01 next
 
 ### [2026-11-20 10:05 +06] M1-TGATE — Milestone 1 gate checks (automated lines only)
 - Type: test

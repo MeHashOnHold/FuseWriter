@@ -16,9 +16,12 @@
   import { getAiProvider } from "./lib/providers/registry";
   import { setConsentHandler } from "./lib/providers/cloud";
   import { AiError, type AiProvider } from "./lib/providers/types";
-  import { rewriteText } from "./lib/ai/rewrite";
+  import { rewriteWithMode } from "./lib/ai/rewrite";
+  import { presetById } from "./lib/ai/modes";
+  import { wordCount } from "./lib/text/stats";
   import { aiErrorText } from "./lib/ai/errors";
   import BottomBar from "./lib/ui/BottomBar.svelte";
+  import DiffView from "./lib/ui/DiffView.svelte";
   import ConsentDialog from "./lib/ui/ConsentDialog.svelte";
   import SettingsDialog from "./lib/ui/SettingsDialog.svelte";
   import SuggestionCard from "./lib/ui/SuggestionCard.svelte";
@@ -36,9 +39,11 @@
     from: number;
     to: number;
     original: string;
-    text: string;
+    live: string;
+    proposed: string | null;
     busy: boolean;
     error: string | null;
+    notice: string | null;
   } | null>(null);
 
   let view: EditorView | undefined;
@@ -49,10 +54,13 @@
   const autoCloud = $derived(autoCloudActive(settings));
   const rewriteDisabled = $derived(getAiProvider(settings) === null);
   const sending = $derived(!!panel?.busy && settings.engine === "cloud");
+  const aiProvider = $derived(getAiProvider(settings));
 
-  function countWords(text: string): number {
-    const m = text.match(/\S+/g);
-    return m ? m.length : 0;
+  function toolsText(): string {
+    if (!view) return "";
+    const sel = view.state.selection.main;
+    if (sel.from !== sel.to) return view.state.sliceDoc(sel.from, sel.to);
+    return view.state.doc.toString();
   }
 
   function closeCard(): void {
@@ -125,14 +133,40 @@
     retried: boolean,
   ): Promise<void> {
     const run = ++rewriteRun;
+    const preset =
+      presetById(settings.rewrite.activePresetId, settings.rewrite.customPresets) ??
+      presetById("fluent", [])!;
     aborter = new AbortController();
-    panel = { from, to, original, text: "", busy: true, error: null };
+    panel = { from, to, original, live: "", proposed: null, busy: true, error: null, notice: null };
+    let buffer = "";
+    let rafId = 0;
+    let lastPaint = 0;
+    const paint = () => {
+      rafId = 0;
+      if (rewriteRun !== run) return;
+      const now = performance.now();
+      if (now - lastPaint < 100) {
+        rafId = requestAnimationFrame(paint);
+        return;
+      }
+      lastPaint = now;
+      if (panel) panel = { ...panel, live: buffer };
+    };
+    const onToken = (tok: string) => {
+      buffer += tok;
+      if (!rafId) rafId = requestAnimationFrame(paint);
+    };
     try {
-      const full = await rewriteText(provider, original, aborter.signal, (t) => {
-        if (panel && rewriteRun === run) panel = { ...panel, text: panel.text + t };
-      });
-      if (panel && rewriteRun === run) panel = { ...panel, text: full, busy: false };
+      const full = await rewriteWithMode(provider, preset, original, aborter.signal, onToken);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (rewriteRun !== run) return;
+      if (full === original) {
+        panel = { from, to, original, live: "", proposed: null, busy: false, error: null, notice: "No changes suggested." };
+      } else {
+        panel = { from, to, original, live: "", proposed: full, busy: false, error: null, notice: null };
+      }
     } catch (e) {
+      if (rafId) cancelAnimationFrame(rafId);
       if (rewriteRun !== run) return;
       if (e instanceof AiError && e.code === "cancelled") {
         panel = null;
@@ -144,7 +178,6 @@
         provider.id === "cloud" &&
         !retried
       ) {
-        // Defense in depth: Rust asked for consent the UI did not expect.
         const ok = await askConsent(provider.label);
         if (ok) {
           await runRewrite(provider, from, to, original, true);
@@ -174,18 +207,31 @@
     }
     const original = view.state.sliceDoc(from, to);
     if (!original.trim()) return;
+    if (original.length > 6000) {
+      panel = {
+        from,
+        to,
+        original,
+        live: "",
+        proposed: null,
+        busy: false,
+        error: "Select a shorter passage.",
+        notice: null,
+      };
+      return;
+    }
     await runRewrite(provider, from, to, original, false);
   }
 
-  function onPanelReplace(): void {
-    if (!view || !panel || panel.busy) return;
-    const { from, to, text, original } = panel;
+  function onApplyDiff(finalText: string): void {
+    if (!view || !panel) return;
+    const { from, to, original } = panel;
     if (view.state.sliceDoc(from, to) !== original) {
       panel = { ...panel, error: "The text changed since the rewrite. Run it again." };
       return;
     }
     view.dispatch({
-      changes: { from, to, insert: text },
+      changes: { from, to, insert: finalText },
       annotations: [Transaction.userEvent.of("input.rewrite"), isolateHistory.of("full")],
     });
     panel = null;
@@ -223,7 +269,7 @@
         const counts = countFixes(u.state.field(marksField));
         safe = counts.safe;
         other = counts.other;
-        words = countWords(u.state.doc.toString());
+        words = wordCount(u.state.doc.toString());
       },
       onMarkClick,
     );
@@ -258,6 +304,8 @@
     onSettings={() => (settingsOpen = true)}
     onRewrite={() => void onRewrite()}
     {rewriteDisabled}
+    getText={toolsText}
+    aiProvider={aiProvider}
   />
   <div class="editor-wrap" id="editor-host" bind:this={hostEl}>
     {#if card}
@@ -273,14 +321,29 @@
   </div>
   {#if panel}
     <div class="rewrite-panel">
-      <div class="rewrite-text">{panel.busy && !panel.text ? "Rewriting…" : panel.text}</div>
-      {#if panel.error}<div class="rewrite-error">{panel.error}</div>{/if}
-      <div class="rewrite-actions">
-        <button class="primary" onclick={onPanelReplace} disabled={panel.busy || !!panel.error}>
-          Replace
-        </button>
-        <button onclick={onPanelCancel}>Cancel</button>
-      </div>
+      {#if panel.busy}
+        <div class="rewrite-text">{panel.live || "Rewriting…"}</div>
+        <div class="rewrite-actions">
+          <button onclick={onPanelCancel}>Cancel</button>
+        </div>
+      {:else if panel.error}
+        <div class="rewrite-error">{panel.error}</div>
+        <div class="rewrite-actions">
+          <button onclick={onPanelCancel}>Close</button>
+        </div>
+      {:else if panel.notice}
+        <div class="rewrite-text">{panel.notice}</div>
+        <div class="rewrite-actions">
+          <button onclick={onPanelCancel}>Close</button>
+        </div>
+      {:else if panel.proposed !== null}
+        <DiffView
+          original={panel.original}
+          proposed={panel.proposed}
+          onApply={onApplyDiff}
+          onCancel={onPanelCancel}
+        />
+      {/if}
     </div>
   {/if}
   <BottomBar

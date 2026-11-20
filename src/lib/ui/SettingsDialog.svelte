@@ -1,6 +1,7 @@
 <script lang="ts">
   import { aiTestConnection, deleteApiKey, hasApiKey, setApiKey } from "../ipc";
   import { saveSettings, settings } from "../settings/store.svelte";
+  import PresetEditor from "./PresetEditor.svelte";
 
   let { open, onClose }: { open: boolean; onClose: () => void } = $props();
 
@@ -118,6 +119,11 @@
         Allow automatic cloud checks (sends text as you type)
       </label>
     {/if}
+  </fieldset>
+
+  <fieldset>
+    <legend>Rewrite presets</legend>
+    <PresetEditor />
   </fieldset>
 
   {#if saveError}<p class="note error">{saveError}</p>{/if}

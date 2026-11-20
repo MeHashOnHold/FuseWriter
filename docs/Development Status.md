@@ -71,11 +71,11 @@
 ---
 
 ## Current milestone and current task ID
-- Current milestone: M4 — Provider abstraction and cloud API
-- Current task ID: M4-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M5-T01.
+- Current milestone: M5 — Diff view and modes
+- Current task ID: M5-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M6-T01.
 
 ## Last updated
-- 2026-11-20 11:13 +06
+- 2026-11-20 11:31 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -115,9 +115,18 @@
 | M4-T09 | Engine badge and privacy indicator | 2026-11-20 | `npm run test` PASS — gating.test.ts 9 cases (labels, autoAiAllowed matrix). Window behaviour is [HUMAN], see below. |
 | M4-T10 | Cloud consent dialog | 2026-11-20 | `npm run verify` PASS. Appearing once per host is [HUMAN], see below. |
 | M4-T11 | Minimal rewrite into a preview panel | 2026-11-20 | `npm run verify` PASS. Real-key streaming is [HUMAN], see below. |
+| M5-T01 | Word diff | 2026-11-20 | `npm run test` PASS — wordDiff.test.ts 9 cases incl. reconstruction property (20 pairs) and the >4M-cell fallback. |
+| M5-T02 | Hunks | 2026-11-20 | `npm run test` PASS — hunks.test.ts 4 cases (accept all = new, reject all = original, whitespace merge). |
+| M5-T03 | InlineDiff and DiffView | 2026-11-20 | `npm run verify` PASS. Rewrite marks in the suggestion card show an inline diff when the original is over 24 chars. Window behaviour is [HUMAN], see below. |
+| M5-T04 | Modes and prompts | 2026-11-20 | `npm run test` PASS — prompts.test.ts 10 cases (TASK lines, delimiters, frozen list quoting, retry suffix, custom instruction + rules, summarize/check prompts). Summarize example pair written per Section 10.3. |
+| M5-T05 | Protection with placeholders | 2026-11-20 | `npm run test` PASS — protect.test.ts 9 cases (round trip, combined text, whole-word frozen matching, unclosed fence, placeholdersIntact failure modes). |
+| M5-T06 | Output validation | 2026-11-20 | `npm run test` PASS — validate.test.ts 14 cases (cleaning: preface/fence/OUTPUT:/quotes; every failure reason). |
+| M5-T07 | Mode picker and custom presets | 2026-11-20 | `npm run verify` PASS. Persistence is [HUMAN], see below. |
+| M5-T08 | Full rewrite flow | 2026-11-20 | `npm run verify` PASS — protect -> prompt -> stream -> validate -> one retry -> restore; live preview throttled via requestAnimationFrame (<=10 paints/s); 6,000-char cap; "No changes suggested." state. Window behaviour is [HUMAN], see below. |
+| M5-T09 | Text stats and Tools menu | 2026-11-20 | `npm run test` PASS — stats.test.ts 7 cases. Reading speed kept at 238 wpm per the plan's VERIFY note (Brysbaert 2019 average for silent reading). Summarize is [HUMAN], see below. |
 
 ## In progress
-- (nothing — M4-TGATE is waiting on the [HUMAN] items below)
+- (nothing — M5-TGATE is waiting on the [HUMAN] items below)
 
 ## Needs human verification
 (Steps marked [HUMAN] that an agent could not check. A human replaces `OPEN` with `HUMAN-VERIFIED <date>` when done.)
@@ -134,6 +143,10 @@
 - OPEN — M4-T09 / M4 gate: switching engines in settings changes the bottom-bar label and dot colour at once; cloud auto-check (when allowed) shows the pulsing amber dot and "auto-check ON".
 - OPEN — M4-T10: with a fake Cloud config, the consent dialog appears once per host.
 - OPEN — M4-T11 / M4 gate: with a real cloud key, selecting a sentence and clicking Rewrite streams text into the panel; Replace applies it; Ctrl/Cmd+Z undoes it in one step.
+- OPEN — M5-T03 / M5 gate: after a rewrite the diff view shows; rejecting one change and applying gives the mixed result; one Ctrl/Cmd+Z undoes the whole apply.
+- OPEN — M5-T07 / M5 gate: a custom preset can be created, selected, edited, deleted, and survives a restart.
+- OPEN — M5-T08 / M5 gate: all 5 modes work with a cloud key; a URL and a backtick-code word in the input survive unchanged; a frozen word survives.
+- OPEN — M5-T09 / M5 gate: word count, reading time, and readability numbers update in the Tools menu; Summarize works with a cloud key.
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
@@ -161,12 +174,57 @@
 - 2026-11-20: keyring pinned to 3.x per Plan M4-T02 — keyring 4.x removed the plan's platform features and changed the API, which is exactly the break the plan's VERIFY note warns about. reqwest 0.13.5 uses the feature name `rustls` (there is no `rustls-tls` in 0.13), per `cargo info reqwest`.
 - 2026-11-20: secrets uses one shared keyring Entry for the app's single credential — the keyring mock store keeps its data in the entry object, so the plan's mock-based tests only pass with a shared instance; real keychains behave the same.
 - 2026-11-20: the AI engine default is "off" (Harper only) — the privacy-safe reading of Plan Section 6, which gives no explicit default for `engine`.
+- 2026-11-20: reading speed kept at 238 wpm (Plan M5-T09 VERIFY note) — it matches the Brysbaert (2019) meta-analysis average for silent reading of English non-fiction.
 - 2026-11-20, M2-T06, Harper flags three spaces (`"   "`) as a Formatting lint ("French spaces are generally not recommended.", replacement `" "`), which conflicts with Plan.md 9.3 case 11 (whitespace-only input -> no marks). `run_check` therefore returns no suggestions for empty or whitespace-only text. The engine never sends such paragraphs anyway (splitParagraphs skips them); this only affects direct command calls.
 - 2026-11-20, M2-T06, perf: `cargo test --release -- --ignored perf` PASS — median 14.54 ms over 50 runs of `run_check` on ~330 words with 5 typos (agent VM, release build). Budget is 50 ms.
 - 2026-11-20, M2-T04, the four protection regexes are compiled once into `LazyLock<Option<Regex>>` (via `.ok()`) instead of `expect(...)`, keeping the code free of `expect` outside tests per Plan rule 16; a compile failure would return no ranges and fail the fixture tests loudly.
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-20 11:31 +06] MILESTONE 5 GATE — Milestone 5 gate checks (automated lines only)
+- Type: test
+- Files changed:
+  - docs/Development Status.md (modified) — this entry, M5 rows, M5 [HUMAN] items, decision
+  - docs/Roadmap.md — NOT ticked: the M5 [HUMAN] lines are OPEN (gate rule 3)
+- Commands run and results:
+  - `npm run verify` → PASS (2026-11-20 11:30 +06: svelte-check 0 errors 0 warnings, Vitest 116/116, cargo fmt/clippy/test — 57 unit + 1 integration)
+- Acceptance criteria:
+  - Word diff and hunk tests pass (accept all = new text, reject all = original) → PASS
+  - Prompts for all modes exist and are tested → PASS
+  - Placeholder protection and output validation tests pass → PASS
+  - URL, code, and frozen words survive a rewrite [HUMAN] → NOT RUN — OPEN below
+  - Diff view per-change accept/reject; Apply is one undo step [HUMAN] → NOT RUN — OPEN below
+  - Custom presets add/edit/delete and persist [HUMAN] → NOT RUN — OPEN below
+  - Stats tests pass; Summarize works with an AI engine [HUMAN] → tests PASS; Summarize NOT RUN — OPEN below
+- Result: PARTIAL (automated lines PASS; completes when the [HUMAN] lines are verified)
+- Commit: see git log
+- Follow-ups: human runs the M5 window checks (needs a cloud key or local endpoint); then tick M5 in Roadmap.md. Next task: M6-T01.
+
+### [2026-11-20 11:30 +06] M5-T01…M5-T09 — Diff view, modes, protection, validation, presets, tools
+- Type: code
+- Files changed:
+  - src/lib/diff/wordDiff.ts, wordDiff.test.ts (created) — token LCS diff with Uint32Array DP and the >4M-cell fallback; 9 tests
+  - src/lib/diff/hunks.ts, hunks.test.ts (created) — segments with whitespace-merge, applyHunks; 4 tests
+  - src/lib/ui/InlineDiff.svelte, DiffView.svelte (created) — per-hunk accept/reject (click or Enter/Space), Accept all / Reject all / Apply / Cancel
+  - src/lib/ui/SuggestionCard.svelte (modified) — rewrite marks over 24 chars show a non-interactive inline diff
+  - src/lib/ai/modes.ts (created) — BUILT_IN_PRESETS + LENGTH_RANGE (Section 10.4) + presetById
+  - src/lib/ai/prompts.ts (rewritten), prompts.test.ts (created) — all Section 10 modes incl. custom, check, summarize (with a written example pair); retry suffix; 10 tests
+  - src/lib/ai/protect.ts, protect.test.ts (created) — [[Pn]] placeholders for fences/code/URLs/emails/frozen words, longest-match wins, max 30; placeholdersIntact; 9 tests
+  - src/lib/ai/validate.ts, validate.test.ts (created) — cleanOutput (preface, fence, delimiters, quotes) + validate (empty/commentary/placeholders/frozen/length/unchanged); 14 tests
+  - src/lib/ui/ModePicker.svelte, PresetEditor.svelte (created) — top-bar mode dropdown; preset CRUD in settings with the plan's validation limits
+  - src/lib/ui/TopBar.svelte, SettingsDialog.svelte (modified) — ModePicker + ToolsMenu in the bar; presets section in settings
+  - src/lib/ai/rewrite.ts (rewritten) — rewriteWithMode: protect, prompt, stream, validate, one retry, restore; unchanged passes through
+  - src/lib/text/stats.ts, stats.test.ts (created) — wordCount, readingTimeMinutes (238 wpm), countSyllables, Flesch readability; 7 tests
+  - src/lib/ui/ToolsMenu.svelte (created) — Reading time / Readability / Summarize popover (selection-aware, Copy button, never edits the document)
+  - src/App.svelte, src/app.css (modified) — rewrite panel now streams a throttled live preview then shows DiffView; Apply is one isolated transaction; 6,000-char selection cap; word count from stats
+- Commands run and results:
+  - `npm run verify` → PASS — svelte-check 0 errors 0 warnings, Vitest 116/116, cargo side unchanged and green
+- Acceptance criteria:
+  - M5-T01/T02 tests → PASS. M5-T04/T05/T06 tests → PASS. M5-T03/T07/T08 builds → PASS ([HUMAN] OPEN). M5-T09 tests → PASS ([HUMAN] OPEN)
+- Result: DONE (automated parts)
+- Commit: see git log
+- Follow-ups: M5 [HUMAN] checks; M6-T01 next (needs network checks for the runtime manifest)
 
 ### [2026-11-20 11:13 +06] MILESTONE 4 GATE — Milestone 4 gate checks (automated lines only)
 - Type: test

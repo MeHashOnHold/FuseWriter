@@ -26,6 +26,22 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font); font-s
 button { font: inherit; color: inherit; background: none; border: 1px solid transparent; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
 button:hover { background: var(--surface); border-color: var(--border); }
 .doc-name { font-weight: 600; }
+.inline-diff { white-space: pre-wrap; line-height: 1.6; margin: 0; font-family: var(--font); }
+.inline-diff .del { text-decoration: line-through; color: var(--mark-spell); }
+.inline-diff .del.dim { text-decoration: none; opacity: .55; }
+.inline-diff .ins { background: color-mix(in srgb, var(--ok) 22%, transparent); }
+.inline-diff .hunk.interactive { cursor: pointer; border-radius: 3px; }
+.inline-diff .hunk.interactive:hover { outline: 1px solid var(--border); }
+.diff-view { display: flex; flex-direction: column; gap: 10px; }
+.mode-picker { background: var(--surface); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius); font: inherit; padding: 3px 6px; }
+.tools-menu { position: relative; }
+.tools-popover { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 8px; display: flex; flex-direction: column; gap: 6px; min-width: 240px; max-width: 340px; z-index: 15; }
+.tools-popover > button { text-align: left; }
+.tools-result { margin: 4px 0 0; font-size: 13px; white-space: pre-wrap; }
+.tools-result.error { color: var(--mark-spell); }
+.preset-row { display: flex; align-items: center; gap: 8px; }
+.preset-form { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.settings-dialog textarea { background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; font: inherit; resize: vertical; }
 .engine-badge { display: inline-flex; align-items: center; gap: 6px; }
 .badge-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
 .badge-dot.amber { background: var(--warn); }

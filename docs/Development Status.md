@@ -75,7 +75,7 @@
 - Current task ID: M8-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). All 8 milestones are now implemented; what remains is the human verification pass across M1–M8. A Windows release build was produced on 2026-11-20 and its startup crash was fixed on 2026-11-21 (see WINDOWS-BUILD and STARTUP-FIX below); nothing in the plan's checklist changed.
 
 ## Last updated
-- 2026-11-21 00:50 +06
+- 2026-11-21 01:06 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -181,7 +181,7 @@
 - OPEN — WINDOWS-BUILD: run the rebuilt `FuseWriter_0.1.0_x64-setup.exe` (or MSI) on this Windows machine or a clean account, then type `I recieve teh package` to confirm the two red marks and the Tab fix in the packaged app. (Agent built the artifacts and launched both the debug and release exes directly — window title "FuseWriter", no stderr — but did not run the installer and did not type in the window.)
 
 ## Known issues and bugs
-- The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
+- RESOLVED 2026-11-21 (PUSH-CLEANUP commit): the GitHub copy now includes the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`, plus iOS/Android/AppX variants), so a fresh clone builds without running `npx tauri icon`. Earlier GitHub copies lacked them because the previous push connector could only upload text files; the icon source `assets/app-icon.svg` was always committed. README.md now reflects the new state.
 - Agent environment note: the Linux VM needed the Tauri prerequisites installed (webkit2gtk-4.1 dev etc.) and a locally repacked `libzstd-dev` to work around a distro package version pin (`1.5.5+dfsg2-2build1.1+hatch1`). This affects only the agent's build machine, not the project. (The VM was replaced once during M6 and the prerequisites had to be reinstalled the same way.)
 - M6-T05: the free-space pre-check before downloading is NOT implemented (Plan M6-T05 step 3 allows this): the runtime exposes no portable free-space query and adding a crate for it is forbidden by the same step. A download on a nearly full disk fails partway with a network/write error instead of an upfront `disk_space` error.
 - M8-T03: two Section 11 budgets are unmeasured because they need a dev window with devtools: first-marks time on a 5,000-word document (budget < 1.5 s) and keystroke long tasks (budget: none > 50 ms from checking). The M7-T06 [HUMAN] item has the exact method. Harper (14.64 ms) and fix-all (27.12 ms) budgets are measured and pass.
@@ -255,7 +255,7 @@
 - Files changed:
   - src-tauri/src/local/manifest.rs (modified) — `platform_key_matches_this_build` now derives the expected key from compile-time `cfg!` target flags (and checks that the embedded manifest has an asset for it) instead of assuming the Linux CI host.
   - docs/Development Status.md (modified) — this entry, WINDOWS-BUILD table row, Last updated, new [HUMAN] item.
-  - src-tauri/icons/*.png, icon.ico, icon.icns, ios/, android/mipmap-*/ (generated, untracked) — regenerated from `assets/app-icon.svg` with `npx tauri icon`; this checkout did not include them (Known issue). Not committed, per README.
+  - src-tauri/icons/*.png, icon.ico, icon.icns, ios/, android/mipmap-*/ (generated) — regenerated from `assets/app-icon.svg` with `npx tauri icon`; this checkout did not include them at the time. Now committed in the PUSH-CLEANUP commit, per the user's instruction.
 - What changed: Built and packaged FuseWriter on Windows. Node was not on PATH, so a portable Node.js LTS (v26.13.1, npm 11.20.0) was installed under `%LOCALAPPDATA%\Temp\opencode\tools` and used for all npm commands; `npm ci` installed exactly the lockfile packages. The first `npm run verify` found one real cross-platform bug in a Rust test that hard-coded Linux; the fix makes the assertion target-aware. Tauri downloaded WiX 3.14.1 and NSIS 3.13 itself and hash-validated both, so no extra manual tool install was needed.
 - Commands run and results:
   - `npm ci` → PASS — "added 78 packages", 0 vulnerabilities.
@@ -667,7 +667,7 @@
   - src-tauri/Cargo.toml, src-tauri/Cargo.lock, src-tauri/build.rs, src-tauri/tauri.conf.json (created/modified by tauri init, then edited) — package `fusewriter`, lib `fusewriter_lib`, identifier `app.fusewriter.desktop`, CSP per plan
   - src-tauri/src/main.rs, src-tauri/src/lib.rs (created/modified) — run() with the dialog plugin registered (M1-T07); print-deny clippy attributes kept
   - src-tauri/capabilities/default.json (modified) — permissions `core:default`, `dialog:default`
-  - src-tauri/icons/* (generated) — from assets/app-icon.svg (local commit only; see Known issues)
+  - src-tauri/icons/* (generated) — from assets/app-icon.svg (committed and pushed to GitHub in PUSH-CLEANUP; the earlier "local commit only" note is obsolete)
 - What changed: Built the Milestone 1 skeleton exactly in the plan's task order. Two deviations were needed with the current (Nov 2026) tool versions and are recorded under Decisions: TypeScript 6.0.3 instead of 7.0.2, and an empty TS script block in App.svelte.
 - Commands run and results:
   - `npm install --save-exact ...` (M1-T02 lists) → PASS — `npm ls --depth=0` shows all deps, no UNMET/ERR

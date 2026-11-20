@@ -18,4 +18,4 @@ npm run verify     # svelte-check + vitest + cargo fmt/clippy/test
 npm run tauri dev  # opens the app window (needs the Tauri prerequisites for your OS)
 ```
 
-App icons in `src-tauri/icons/` are generated from `assets/app-icon.svg` with `npx tauri icon assets/app-icon.svg` and are not committed; regenerate them after cloning.
+App icons in `src-tauri/icons/` are generated from `assets/app-icon.svg` with `npx tauri icon assets/app-icon.svg` and are committed, so a fresh clone builds without extra steps. Regenerate them only when changing the SVG.

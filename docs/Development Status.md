@@ -71,11 +71,11 @@
 ---
 
 ## Current milestone and current task ID
-- Current milestone: M2 — Editor with Harper marks
-- Current task ID: M2-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M3-T01.
+- Current milestone: M3 — Tab-to-fix-all and undo
+- Current task ID: M3-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M4-T01.
 
 ## Last updated
-- 2026-11-20 10:48 +06
+- 2026-11-20 10:54 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -99,9 +99,14 @@
 | M2-T10 | Paragraph splitting | 2026-11-20 | `npm run test` PASS — paragraphs.test.ts 7 cases (blank lines, CRLF, fenced block, 12,000-char chunking). |
 | M2-T11 | SuggestionEngine (Harper path) | 2026-11-20 | `npm run test` PASS — SuggestionEngine.test.ts 6 cases (debounce, per-paragraph recheck, cache, stale discard, absolute offsets, dismissed filter) + lru.test.ts 3 cases. Live marks in the window are [HUMAN], see below. |
 | M2-T12 | Bottom bar counts and engine label | 2026-11-20 | `npm run test` + `npm run check` PASS — status.test.ts 2 cases. Bar appearance is [HUMAN], see below. |
+| M3-T01 | Apply one suggestion | 2026-11-20 | `npm run test` PASS — applyFix.test.ts 4 cases (applies, refuses stale, one undo, alternative). |
+| M3-T02 | Fix-all in one transaction | 2026-11-20 | `npm run test` PASS — tabFix.test.ts 7 cases (one dispatch, one undo, overlap, stale skip, non-safe/rewrite never applied, cursor mapping). |
+| M3-T03 | Wire Tab into the editor | 2026-11-20 | `npm run verify` PASS. Tab behaviour in the window is [HUMAN], see below. |
+| M3-T04 | Suggestion card | 2026-11-20 | `npm run verify` PASS (svelte-check 0 errors). Card appearance/accept is [HUMAN], see below. |
+| M3-T05 | Dismiss | 2026-11-20 | `npm run test` PASS — dismissed.test.ts 4 cases; isDismissed wired into EngineDeps. Session persistence in the window is [HUMAN], see below. |
 
 ## In progress
-- (nothing — M2-TGATE is waiting on the [HUMAN] items below)
+- (nothing — M3-TGATE is waiting on the [HUMAN] items below)
 
 ## Needs human verification
 (Steps marked [HUMAN] that an agent could not check. A human replaces `OPEN` with `HUMAN-VERIFIED <date>` when done.)
@@ -111,6 +116,9 @@
 - OPEN — M2-T08: typing works in the editor, Ctrl/Cmd+Z undoes typing, and there are no browser spellcheck underlines.
 - OPEN — M2-T11 / M2 gate: in `npm run tauri dev`, typing `I recieve teh package` shows red wavy marks under `recieve` and `teh` within ~0.3 s; typing a space after a marked word does not make the mark flicker.
 - OPEN — M2-T12 / M2 gate: the bottom bar shows "2 quick fixes, Tab to fix all" for that sample text and is blank on the left for clean text.
+- OPEN — M3-T03 / M3 gate: type `I recieve teh package.` and press Tab: both words are fixed; one Ctrl/Cmd+Z brings both back; with clean text, Tab does not change the text.
+- OPEN — M3-T04 / M3 gate: clicking a red mark shows the card (old -> new, reason, Accept, Dismiss); Accept applies the fix and one Ctrl/Cmd+Z undoes only that fix.
+- OPEN — M3-T05: dismiss a mark, then type elsewhere: the mark does not come back.
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
@@ -141,6 +149,46 @@
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-20 10:54 +06] MILESTONE 3 GATE — Milestone 3 gate checks (automated lines only)
+- Type: test
+- Files changed:
+  - docs/Development Status.md (modified) — this entry, M3 rows, M3 [HUMAN] items
+  - docs/Roadmap.md — NOT ticked: the M3 [HUMAN] lines are OPEN (gate rule 3)
+- Commands run and results:
+  - `npm run test` → PASS — 49 tests in 10 files
+  - `npm run verify` → PASS (2026-11-20 10:54 +06: svelte-check 0 errors, Vitest 49/49, cargo fmt/clippy/test)
+- Acceptance criteria:
+  - Fix-all uses ONE transaction → PASS (dispatch counted in tabFix.test.ts)
+  - One undo restores the original text → PASS
+  - Tab returns false when nothing is pending → PASS
+  - Rewrite and non-safe marks are never applied by Tab → PASS
+  - Card shows old/new/reason/Accept/Dismiss [HUMAN] → NOT RUN — OPEN below
+  - Accept is one undo step; Dismiss hides the mark for the session [HUMAN] → NOT RUN — OPEN below
+- Result: PARTIAL (automated lines PASS; completes when the [HUMAN] lines are verified)
+- Commit: see git log (short messages, per the human's 2026-11-20 request)
+- Follow-ups: human runs the M3 window checks; then tick M3 in Roadmap.md. Next task: M4-T01.
+
+### [2026-11-20 10:53 +06] M3-T01…M3-T05 — Tab-to-fix-all, suggestion card, dismiss
+- Type: code
+- Files changed:
+  - src/lib/editor/applyFix.ts, applyFix.test.ts (created) — applyFix: one isolated transaction, stale marks dropped; 4 tests
+  - src/lib/editor/tabFix.ts, tabFix.test.ts (created) — collectSafeFixes + fixAll in one dispatch, Tab keymap at Prec.highest; 7 tests
+  - src/lib/editor/testHelpers.ts (created) — shared fake EditorView + mark factory for tests
+  - src/lib/editor/createEditor.ts (modified) — tabFixKeymap added before the default keymap; click handler reports mark clicks (data-sid -> mark + coords)
+  - src/lib/ui/SuggestionCard.svelte (created) — old -> new, reason, Accept, Dismiss, up to 3 alternative buttons
+  - src/lib/editor/dismissed.ts, dismissed.test.ts (created) — session dismissal set keyed by kind|original|replacement|reason; 4 tests
+  - src/App.svelte (modified) — card state and positioning inside .editor-wrap, close on Escape/outside click/scroll/doc change, Accept/Dismiss wired, engine now receives the real isDismissed
+  - src/app.css (modified) — .suggestion-card styles per Plan M3-T04
+- What changed: Tab now fixes every safe Harper mark in a single undoable transaction (and falls through when nothing is pending). Clicking a mark opens a card to accept the fix, accept an alternative, or dismiss the suggestion for the session; dismissed suggestions are filtered by the engine so they do not reappear.
+- Commands run and results:
+  - `npm run test` → PASS — 49 tests, 10 files
+  - `npm run verify` → PASS — svelte-check 0 errors, cargo side unchanged and green
+- Acceptance criteria:
+  - M3-T01 tests pass → PASS. M3-T02 tests pass → PASS. M3-T03 build passes → PASS ([HUMAN] OPEN). M3-T04 build passes → PASS ([HUMAN] OPEN). M3-T05 tests pass → PASS ([HUMAN] OPEN)
+- Result: DONE (automated parts)
+- Commit: see git log
+- Follow-ups: M3 [HUMAN] checks; M4-T01 next
 
 ### [2026-11-20 10:48 +06] MILESTONE 2 GATE — Milestone 2 gate checks (automated lines only)
 - Type: test

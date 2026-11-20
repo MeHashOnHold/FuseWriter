@@ -25,6 +25,16 @@ body { background: var(--bg); color: var(--fg); font-family: var(--font); font-s
 .editor-wrap { position: relative; overflow: auto; }
 button { font: inherit; color: inherit; background: none; border: 1px solid transparent; border-radius: 6px; padding: 3px 8px; cursor: pointer; }
 button:hover { background: var(--surface); border-color: var(--border); }
+.suggestion-card { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 6px 24px rgba(0,0,0,.18); padding: 10px 12px; max-width: 320px; z-index: 10; font-size: 13px; }
+.suggestion-card .card-change { display: flex; align-items: center; gap: 8px; }
+.suggestion-card .card-old { text-decoration: line-through; }
+.suggestion-card .card-arrow { color: var(--muted); }
+.suggestion-card .card-x { padding: 2px 4px; }
+.suggestion-card .card-reason { margin: 6px 0 8px; color: var(--muted); }
+.suggestion-card .card-actions { display: flex; gap: 8px; }
+.suggestion-card button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.suggestion-card .card-alts { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.suggestion-card .card-alts .alt { font-size: 12px; background: var(--bg); border-color: var(--border); }
 .qw-spell   { text-decoration: underline wavy var(--mark-spell);   text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 .qw-grammar { text-decoration: underline wavy var(--mark-grammar); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 .qw-ai      { text-decoration: underline solid var(--mark-ai);     text-decoration-thickness: 2px;   text-underline-offset: 3px; }

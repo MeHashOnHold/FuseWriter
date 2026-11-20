@@ -1,12 +1,23 @@
 <script lang="ts">
+  import EngineBadge from "./EngineBadge.svelte";
+
   let {
     safe,
     other,
-    engineLabel,
+    badgeText,
     offDevice,
+    autoCloud = false,
+    sending = false,
     words,
-  }: { safe: number; other: number; engineLabel: string; offDevice: boolean; words: number } =
-    $props();
+  }: {
+    safe: number;
+    other: number;
+    badgeText: string;
+    offDevice: boolean;
+    autoCloud?: boolean;
+    sending?: boolean;
+    words: number;
+  } = $props();
 
   const left = $derived(
     safe > 0
@@ -18,29 +29,8 @@
 </script>
 
 <footer class="bar bottom">
-  <span>{left}</span>
+  <span class="fix-count">{left}</span>
   <span class="spacer"></span>
-  <span class="engine">
-    <span class="dot" class:on={offDevice}></span>
-    {engineLabel}
-  </span>
-  <span>{words} word{words === 1 ? "" : "s"}</span>
+  <EngineBadge text={badgeText} {offDevice} {autoCloud} {sending} />
+  <span class="word-count">{words} words</span>
 </footer>
-
-<style>
-  .engine {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--warn);
-    display: inline-block;
-  }
-  .dot.on {
-    background: var(--ok);
-  }
-</style>

@@ -71,11 +71,11 @@
 ---
 
 ## Current milestone and current task ID
-- Current milestone: M3 — Tab-to-fix-all and undo
-- Current task ID: M3-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M4-T01.
+- Current milestone: M4 — Provider abstraction and cloud API
+- Current task ID: M4-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M5-T01.
 
 ## Last updated
-- 2026-11-20 10:54 +06
+- 2026-11-20 11:13 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -104,9 +104,20 @@
 | M3-T03 | Wire Tab into the editor | 2026-11-20 | `npm run verify` PASS. Tab behaviour in the window is [HUMAN], see below. |
 | M3-T04 | Suggestion card | 2026-11-20 | `npm run verify` PASS (svelte-check 0 errors). Card appearance/accept is [HUMAN], see below. |
 | M3-T05 | Dismiss | 2026-11-20 | `npm run test` PASS — dismissed.test.ts 4 cases; isDismissed wired into EngineDeps. Session persistence in the window is [HUMAN], see below. |
+| M4-T01 | Settings in Rust | 2026-11-20 | `cargo test settings` PASS — 8 cases (defaults, round trip, broken/missing file, unknown fields, URL rules, clamps). |
+| M4-T02 | Secrets in the keychain | 2026-11-20 | `cargo test secrets` PASS — 4 cases (mock store). `grep -rn "get_key" src-tauri/src/commands` prints nothing. |
+| M4-T03 | Provider traits + OpenAI client | 2026-11-20 | `cargo test openai` PASS — map_status, build_body (local extras, cloud temperature), complete_once + auth header, 401. Deps: keyring pinned to 3.x (4.x dropped the plan's features and changed the API), reqwest 0.13.5 with the `rustls` feature name (no `rustls-tls` in 0.13), tokio, tokio-util, futures-util, wiremock (dev). |
+| M4-T04 | SSE parser | 2026-11-20 | `cargo test sse` PASS — 8 cases incl. split multi-byte char and delta_text rules. |
+| M4-T05 | Streaming ai_complete + policy | 2026-11-20 | `cargo test ai` PASS — 6 policy cases (consent_required, no_api_key, auto_cloud_blocked, loopback, bad_url, ok) + stream order + cancel (wiremock). Local engine answers local_not_installed until M6. |
+| M4-T06 | Test-connection command | 2026-11-20 | `cargo test ai` PASS — wiremock ok + 401 -> unauthorized. No consent needed (human clicks Test). |
+| M4-T07 | TS provider layer | 2026-11-20 | `npm run test` PASS — registry.test.ts 5 cases. |
+| M4-T08 | Settings store and dialog | 2026-11-20 | `npm run verify` PASS. `grep -rn "api_key\|apiKey" src/lib/settings` prints nothing. Restart behaviour is [HUMAN], see below. |
+| M4-T09 | Engine badge and privacy indicator | 2026-11-20 | `npm run test` PASS — gating.test.ts 9 cases (labels, autoAiAllowed matrix). Window behaviour is [HUMAN], see below. |
+| M4-T10 | Cloud consent dialog | 2026-11-20 | `npm run verify` PASS. Appearing once per host is [HUMAN], see below. |
+| M4-T11 | Minimal rewrite into a preview panel | 2026-11-20 | `npm run verify` PASS. Real-key streaming is [HUMAN], see below. |
 
 ## In progress
-- (nothing — M3-TGATE is waiting on the [HUMAN] items below)
+- (nothing — M4-TGATE is waiting on the [HUMAN] items below)
 
 ## Needs human verification
 (Steps marked [HUMAN] that an agent could not check. A human replaces `OPEN` with `HUMAN-VERIFIED <date>` when done.)
@@ -119,6 +130,10 @@
 - OPEN — M3-T03 / M3 gate: type `I recieve teh package.` and press Tab: both words are fixed; one Ctrl/Cmd+Z brings both back; with clean text, Tab does not change the text.
 - OPEN — M3-T04 / M3 gate: clicking a red mark shows the card (old -> new, reason, Accept, Dismiss); Accept applies the fix and one Ctrl/Cmd+Z undoes only that fix.
 - OPEN — M3-T05: dismiss a mark, then type elsewhere: the mark does not come back.
+- OPEN — M4-T08 / M4 gate: settings open, save, and survive an app restart; after restart the key field is empty but shows "Key saved".
+- OPEN — M4-T09 / M4 gate: switching engines in settings changes the bottom-bar label and dot colour at once; cloud auto-check (when allowed) shows the pulsing amber dot and "auto-check ON".
+- OPEN — M4-T10: with a fake Cloud config, the consent dialog appears once per host.
+- OPEN — M4-T11 / M4 gate: with a real cloud key, selecting a sentence and clicking Rewrite streams text into the panel; Replace applies it; Ctrl/Cmd+Z undoes it in one step.
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
@@ -143,12 +158,60 @@
 - 2026-11-20, M2-T05, the safe Grammar kind names were verified against that list: "Capitalization", "Repetition", "Formatting" all exist as written in the plan; no fix needed.
 - 2026-11-20, M2-T06, AppState stores the engine as `Arc<Mutex<HarperEngine>>` (the plan shows `Mutex<HarperEngine>`): the extra `Arc` is needed so the `spawn_blocking` check task can own a handle to the same engine. thiserror 2.0.21 added per the task.
 - 2026-11-20, M2-T06, fixture freeze after the first reviewed run (task step 6): for `NASA lauched it.`, Harper 3.2.0's FIRST suggestion for `lauched` is "latched" (edit distance tie), with "launched" as alternative 2. The fixture's mustInclude was frozen to the real output (`lauched` -> `latched`) and the test additionally asserts "launched" is offered (replacement or alternatives) and the fix is safe, which preserves the intent of Plan.md 9.3 case 12. `NASA` itself is not marked at all.
+- 2026-11-20: keyring pinned to 3.x per Plan M4-T02 — keyring 4.x removed the plan's platform features and changed the API, which is exactly the break the plan's VERIFY note warns about. reqwest 0.13.5 uses the feature name `rustls` (there is no `rustls-tls` in 0.13), per `cargo info reqwest`.
+- 2026-11-20: secrets uses one shared keyring Entry for the app's single credential — the keyring mock store keeps its data in the entry object, so the plan's mock-based tests only pass with a shared instance; real keychains behave the same.
+- 2026-11-20: the AI engine default is "off" (Harper only) — the privacy-safe reading of Plan Section 6, which gives no explicit default for `engine`.
 - 2026-11-20, M2-T06, Harper flags three spaces (`"   "`) as a Formatting lint ("French spaces are generally not recommended.", replacement `" "`), which conflicts with Plan.md 9.3 case 11 (whitespace-only input -> no marks). `run_check` therefore returns no suggestions for empty or whitespace-only text. The engine never sends such paragraphs anyway (splitParagraphs skips them); this only affects direct command calls.
 - 2026-11-20, M2-T06, perf: `cargo test --release -- --ignored perf` PASS — median 14.54 ms over 50 runs of `run_check` on ~330 words with 5 typos (agent VM, release build). Budget is 50 ms.
 - 2026-11-20, M2-T04, the four protection regexes are compiled once into `LazyLock<Option<Regex>>` (via `.ok()`) instead of `expect(...)`, keeping the code free of `expect` outside tests per Plan rule 16; a compile failure would return no ranges and fail the fixture tests loudly.
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-20 11:13 +06] MILESTONE 4 GATE — Milestone 4 gate checks (automated lines only)
+- Type: test
+- Files changed:
+  - docs/Development Status.md (modified) — this entry, M4 rows, M4 [HUMAN] items, decisions
+  - docs/Roadmap.md — NOT ticked: the M4 [HUMAN] lines are OPEN (gate rule 3)
+- Commands run and results:
+  - `npm run verify` → PASS (2026-11-20 11:13 +06: svelte-check 0 errors, Vitest 63/63, cargo fmt/clippy/test — 57 unit + 1 integration)
+  - `grep -rn "get_key" src-tauri/src/commands` → no matches
+  - `grep -rn "api_key|apiKey" src/lib/settings` → no matches
+- Acceptance criteria:
+  - Settings load/save with defaults; invalid URLs rejected (tests pass) → PASS
+  - API key stored only in the keychain; no command returns it (grep + tests) → PASS
+  - SSE parser and streaming client pass tests; cancel works → PASS
+  - Rust refuses cloud calls without consent, without a key, and for auto-origin unless allowed (tests pass) → PASS
+  - Engine badge shows engine and off-device state [HUMAN] → NOT RUN — OPEN below
+  - Basic rewrite streams from a real cloud API, one undo step [HUMAN] → NOT RUN — OPEN below
+- Result: PARTIAL (automated lines PASS; completes when the [HUMAN] lines are verified)
+- Commit: see git log
+- Follow-ups: human runs the M4 window checks (needs a real or fake cloud endpoint for T10/T11); then tick M4 in Roadmap.md. Next task: M5-T01.
+
+### [2026-11-20 11:12 +06] M4-T01…M4-T11 — Settings, keychain, cloud provider, consent, rewrite panel
+- Type: code
+- Files changed:
+  - src-tauri/src/settings.rs (created) — Section 6 settings structs with serde defaults, load/save via temp+rename, validate (https or loopback http, trailing slash stripped, clamps); 8 tests
+  - src-tauri/src/secrets.rs (created) — keychain get/set/delete/has behind one shared Entry; commands never return the key; 4 mock tests
+  - src-tauri/src/types.rs, error.rs (modified) — AiErrorCode (15 codes with messages), AiRequest, AiEvent; AppError gains BadUrl, EmptyApiKey, Ai(code)
+  - src-tauri/src/providers/mod.rs, sse.rs, openai_compat.rs (created) — GrammarProvider/AiProvider traits per Section 7, incremental SSE parser (8 tests), OpenAiCompatProvider (build_body rules, status mapping, complete_once, streaming with per-chunk 30 s timeout and cancellation; wiremock tests incl. cancel)
+  - src-tauri/src/commands/settings.rs, secrets.rs, ai.rs (created) — get/save_settings, key commands, ai_complete/ai_cancel/ai_test_connection, pure check_cloud_policy (6 tests + 2 wiremock)
+  - src-tauri/src/state.rs, lib.rs (modified) — settings + cancel registry in AppState; settings loaded from the app config dir in setup; 9 commands registered
+  - src-tauri/Cargo.toml (modified) — keyring 3, reqwest 0.13.5 (rustls), tokio, tokio-util, futures-util; wiremock dev-dependency
+  - src/lib/ipc.ts (modified) — settings/secret/test wrappers + aiComplete with Channel and AbortSignal -> ai_cancel
+  - src/lib/providers/types.ts, cloud.ts, local.ts, registry.ts, registry.test.ts (created) — Section 7 TS providers; cloud consent gate via an app-registered handler; registry (5 tests)
+  - src/lib/settings/defaults.ts, store.svelte.ts (created) — DEFAULT_SETTINGS and the reactive store (load/save via Rust)
+  - src/lib/ui/TopBar.svelte, SettingsDialog.svelte, EngineBadge.svelte, ConsentDialog.svelte (created); BottomBar.svelte (modified) — badge from gating (label, dot, auto-check pulse, sending state)
+  - src/lib/engine/gating.ts, gating.test.ts (created) — engineLabel + autoAiAllowed/autoCloudActive (9 tests)
+  - src/lib/ai/prompts.ts, rewrite.ts, errors.ts (created) — Section 10 fluent prompt, rewriteText, code-to-text map
+  - src/App.svelte, src/app.css (modified) — TopBar, settings dialog, consent flow (Allow records the host and saves), rewrite panel (stream, Replace as one isolated transaction, Cancel aborts), badge wired to settings, engine dialect now follows settings
+- Commands run and results:
+  - `npm run verify` → PASS — svelte-check 0 errors, Vitest 63/63, cargo fmt/clippy/test (57 unit + 1 integration)
+- Acceptance criteria:
+  - M4-T01…T06 cargo test filters pass → PASS. M4-T07 registry tests → PASS. M4-T08 build + grep → PASS ([HUMAN] OPEN). M4-T09 gating tests → PASS ([HUMAN] OPEN). M4-T10 build → PASS ([HUMAN] OPEN). M4-T11 build → PASS ([HUMAN] OPEN)
+- Result: DONE (automated parts)
+- Commit: see git log
+- Follow-ups: M4 [HUMAN] checks; M5-T01 next
 
 ### [2026-11-20 10:54 +06] MILESTONE 3 GATE — Milestone 3 gate checks (automated lines only)
 - Type: test

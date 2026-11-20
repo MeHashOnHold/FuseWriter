@@ -9,6 +9,7 @@
   import { applyFix } from "./lib/editor/applyFix";
   import { dismiss, isDismissed } from "./lib/editor/dismissed";
   import { SuggestionEngine, type EditorHost } from "./lib/engine/SuggestionEngine";
+  import { AiScheduler } from "./lib/engine/aiScheduler";
   import { splitParagraphs } from "./lib/engine/paragraphs";
   import { autoCloudActive, engineLabel } from "./lib/engine/gating";
   import { checkText } from "./lib/ipc";
@@ -54,7 +55,9 @@
   const badge = $derived(engineLabel(settings));
   const autoCloud = $derived(autoCloudActive(settings));
   const rewriteDisabled = $derived(getAiProvider(settings) === null);
-  const sending = $derived(!!panel?.busy && settings.engine === "cloud");
+  let aiSending = $state(false);
+  let schedulerNote = $state("");
+  const sending = $derived((!!panel?.busy || aiSending) && settings.engine === "cloud");
   const aiProvider = $derived(getAiProvider(settings));
 
   function toolsText(): string {
@@ -265,6 +268,7 @@
     void refreshLocalStatus();
     setConsentHandler((host) => askConsent(host));
     let engine: SuggestionEngine | undefined;
+    let scheduler: AiScheduler | undefined;
 
     const host: EditorHost = {
       getText: () => view?.state.doc.toString() ?? "",
@@ -279,6 +283,7 @@
     view = createEditor(
       hostEl,
       (u) => {
+        for (const tr of u.transactions) scheduler?.onDocChanged(tr);
         if (u.docChanged) {
           engine?.onDocChanged();
           card = null;
@@ -297,6 +302,22 @@
       isDismissed,
     });
 
+    scheduler = new AiScheduler(host, {
+      settings: () => settings,
+      provider: () => getAiProvider(settings),
+      hasHarperMarksIn: (from, to) =>
+        (view?.state.field(marksField) ?? []).some(
+          (m) => m.source === "harper" && m.start < to && m.end > from,
+        ),
+      isComposing: () => view?.composing ?? false,
+      onSendingChange: (b) => {
+        aiSending = b;
+      },
+      onError: (msg) => {
+        schedulerNote = msg;
+      },
+    });
+
     const el = hostEl;
     const onScroll = () => {
       card = null;
@@ -306,6 +327,7 @@
     return () => {
       el.removeEventListener("scroll", onScroll, true);
       setConsentHandler(undefined);
+      scheduler?.dispose();
       engine?.dispose();
       view?.destroy();
       view = undefined;
@@ -371,10 +393,17 @@
     {autoCloud}
     {sending}
     {words}
+    note={schedulerNote}
   />
 </div>
 
-<SettingsDialog open={settingsOpen} onClose={() => (settingsOpen = false)} />
+<SettingsDialog
+  open={settingsOpen}
+  onClose={() => {
+    settingsOpen = false;
+    schedulerNote = "";
+  }}
+/>
 {#if consentRequest}
   <ConsentDialog host={consentRequest.host} onAllow={onConsentAllow} onCancel={onConsentCancel} />
 {/if}

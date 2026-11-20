@@ -70,6 +70,11 @@ describe("autoAiAllowed", () => {
     expect(autoCloudActive(s)).toBe(true);
   });
 
+  it("autoCloudActive is false for local and off engines", () => {
+    expect(autoCloudActive(makeSettings({ engine: "local" }))).toBe(false);
+    expect(autoCloudActive(makeSettings({ engine: "off" }))).toBe(false);
+  });
+
   it("cloud with allowCloud but autoCheck off is not allowed", () => {
     const s = makeSettings({ engine: "cloud" });
     s.autoCheck.allowCloud = true;

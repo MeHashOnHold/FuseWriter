@@ -56,11 +56,15 @@ pub async fn download(
     }
     let part = part_path(dest);
     let client = reqwest::Client::new();
-    let resp = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|_| AppError::Ai(AiErrorCode::Network))?;
+    let resp = tokio::select! {
+        biased;
+        _ = cancel.cancelled() => {
+            return Err(AppError::Ai(AiErrorCode::Cancelled));
+        }
+        r = client.get(url).send() => {
+            r.map_err(|_| AppError::Ai(AiErrorCode::Network))?
+        }
+    };
     if !resp.status().is_success() {
         return Err(AppError::Ai(AiErrorCode::Server));
     }
@@ -80,6 +84,7 @@ pub async fn download(
     let outcome: Result<(), AppError> = async {
         loop {
             let next = tokio::select! {
+                biased;
                 _ = cancel.cancelled() => {
                     return Err(AppError::Ai(AiErrorCode::Cancelled));
                 }

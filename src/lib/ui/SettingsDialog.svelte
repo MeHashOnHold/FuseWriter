@@ -7,6 +7,13 @@
   let { open, onClose }: { open: boolean; onClose: () => void } = $props();
 
   let dialogEl: HTMLDialogElement | undefined = $state();
+  const cloudHost = $derived.by(() => {
+    try {
+      return new URL(settings.cloud.baseUrl).host;
+    } catch {
+      return settings.cloud.baseUrl;
+    }
+  });
   let apiKeyField = $state("");
   let keySaved = $state(false);
   let testResult = $state("");
@@ -119,6 +126,11 @@
         <input type="checkbox" bind:checked={settings.autoCheck.allowCloud} />
         Allow automatic cloud checks (sends text as you type)
       </label>
+      {#if settings.autoCheck.allowCloud}
+        <p class="note error">
+          Each sentence you type will be sent to {cloudHost}.
+        </p>
+      {/if}
     {/if}
   </fieldset>
 

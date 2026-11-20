@@ -9,6 +9,7 @@
     autoCloud = false,
     sending = false,
     words,
+    note = "",
   }: {
     safe: number;
     other: number;
@@ -17,6 +18,7 @@
     autoCloud?: boolean;
     sending?: boolean;
     words: number;
+    note?: string;
   } = $props();
 
   const left = $derived(
@@ -29,7 +31,7 @@
 </script>
 
 <footer class="bar bottom">
-  <span class="fix-count">{left}</span>
+  <span class="fix-count">{note || left}</span>
   <span class="spacer"></span>
   <EngineBadge text={badgeText} {offDevice} {autoCloud} {sending} />
   <span class="word-count">{words} words</span>

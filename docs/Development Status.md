@@ -71,11 +71,11 @@
 ---
 
 ## Current milestone and current task ID
-- Current milestone: M6 — Local model download and sidecar
-- Current task ID: M6-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M7-T01.
+- Current milestone: M7 — Proactive pause-based checking
+- Current task ID: M7-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M8-T01.
 
 ## Last updated
-- 2026-11-20 12:03 +06
+- 2026-11-20 12:16 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -132,9 +132,15 @@
 | M6-T06 | Local provider in TS | 2026-11-20 | `npm run verify` PASS — ipc wrappers, shared localStatus store, registry returns null until the selected model is installed (registry tests updated + a not-installed case added); Rewrite then shows "Local model not installed. Download it in Settings." |
 | M6-T07 | Local section in settings | 2026-11-20 | `npm run verify` PASS — model radios with real GB sizes, Download with progress bar (MB + %) and Cancel, Remove with confirmation, status line, unsupported-platform notice. Window behaviour is [HUMAN], see below. |
 | M6-T08 | Real-model smoke test | 2026-11-20 | DONE headlessly (agent route): the pinned llama-server ran the real E2B Q4_0 model (downloaded file's SHA-256 matches the manifest) with the app's exact arguments and the app's own prompt/validate code. Results table in the M6 change-log entry: 5 of 6 cases pass; Expand on a 16-char input fails the length rule even after the retry; no reasoning text in any output. |
+| M7-T01 | Sentence splitter | 2026-11-20 | `npm run test -- sentences` PASS — 17 cases: abbreviations (Mr./Dr./Prof./St./Mrs./Ms./vs./Inc./Ltd./e.g./i.e./etc.), decimals, initials, closing quotes, ellipsis both ways, newlines, missing final punctuation, offset invariant checked for every case. One fix during development: the ellipsis rule must skip whitespace before judging the next letter. |
+| M7-T02 | Pending tracker | 2026-11-20 | `npm run test -- pending` PASS — ranges shift with edits before them, survive edits after them, and go stale on edits inside or deletion; staleness reuses the editor's touch rule and a text-hash check. |
+| M7-T03 | AI check pipeline | 2026-11-20 | `npm run test -- aiChecker` PASS — protect -> check prompt -> validate (mode `check`) -> restore; invalid or unchanged output -> null; >50% word change -> null (changed words counted per diff hunk, larger side); LRU cache (300) keyed by sentence + provider; aborted calls are never cached; `makeAiSuggestion` builds a purple rewrite mark that is never auto-applied. |
+| M7-T04 | AI scheduler | 2026-11-20 | `npm run test -- aiScheduler` PASS — 13 fake-timer tests: pause fires at pauseMs and not before, typing resets the timer, sentence-end fires after 150 ms, one request at a time, in-flight abort when the sentence is edited, results applied at the TRACKED range after earlier insertions, and every skip rule (too short/long, Harper marks present, composing, URL-only sentence, no provider, cloud without opt-in = zero calls). Wired into App (every transaction, sending state, bottom-bar note on hard errors; hard errors pause checks until settings change). |
+| M7-T05 | Cloud auto-check visibility | 2026-11-20 | Settings now shows "Each sentence you type will be sent to {host}." under the allow-cloud toggle when it is on; the badge's sending state is driven by the scheduler as well as the rewrite panel (cloud only); the bottom bar shows scheduler error lines. gating tests extended (autoCloudActive false for local/off). Window check is [HUMAN], see below. |
+| M7-T06 | Responsiveness measurement | 2026-11-20 | NOT RUN — the plan's method needs a dev window with devtools (Performance tab) and typing by hand; the agent is headless. Recorded as a [HUMAN] item below with the exact steps. By construction the checks run as async IPC calls and results land in a single small dispatch, but no numbers are claimed. |
 
 ## In progress
-- (nothing — M6-TGATE is waiting on the [HUMAN] items below)
+- (nothing — M7-TGATE is waiting on the [HUMAN] items below)
 
 ## Needs human verification
 (Steps marked [HUMAN] that an agent could not check. A human replaces `OPEN` with `HUMAN-VERIFIED <date>` when done.)
@@ -157,6 +163,9 @@
 - OPEN — M5-T09 / M5 gate: word count, reading time, and readability numbers update in the Tools menu; Summarize works with a cloud key.
 - OPEN — M6-T04 / M6 gate: with a local model installed, the llama-server child process appears when a rewrite runs, stops after the idle timeout, and disappears when the app closes.
 - OPEN — M6-T07 / M6 gate: in Settings, Download E2B shows progress, Cancel works mid-download, and Remove deletes the model.
+- OPEN — M7-T05 / M7 gate: with engine = Cloud and automatic cloud checks allowed, typing shows the pulsing "auto-check ON" badge, and the badge shows "sending…" while a sentence is being checked.
+- OPEN — M7-T06: in `npm run tauri dev` with devtools open (Performance tab), type steadily for 30 seconds with local auto-check on and record the longest task; then repeat with a 5,000-word document pasted in. (Plan method; the agent is headless and recorded no numbers.)
+- OPEN — M7-T04 / M7 gate: with a local model installed and auto-check on, typing a clumsy sentence and pausing shows a purple mark; clicking it shows the card; Accept applies it; typing more text before it does not misplace it.
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
@@ -197,6 +206,44 @@
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-20 12:16 +06] MILESTONE 7 GATE — Milestone 7 gate checks (automated lines only)
+- Type: test
+- Files changed:
+  - docs/Development Status.md (modified) — this entry, M7 rows, [HUMAN] items
+  - docs/Roadmap.md — NOT ticked: the M7 [HUMAN] lines are OPEN (gate rule 3)
+- Commands run and results:
+  - `npm run verify` → PASS (2026-11-20 12:16 +06: svelte-check 0 errors 0 warnings, Vitest 160/160, cargo fmt/clippy/test — 72 unit + 1 integration)
+- Acceptance criteria:
+  - Sentence splitter tests pass → PASS
+  - Pending tracker tests pass → PASS
+  - Scheduler tests (pause, sentence-end, one at a time, stale abort, skip rules) → PASS
+  - Results cached by text hash → PASS
+  - Cloud auto-checks zero requests unless opted in → PASS (test); indicator [HUMAN] → OPEN below
+  - No long task above 100 ms; numbers recorded → NOT RUN (needs a dev window; see M7-T06 row and the [HUMAN] item)
+  - Purple marks appear after a pause and shift while typing [HUMAN] → NOT RUN — OPEN below
+- Result: PARTIAL (automated lines PASS; completes when the [HUMAN] lines are verified)
+- Commit: see git log
+- Follow-ups: human runs the M7 window checks; then tick M7 in Roadmap.md. Next task: M8-T01.
+
+### [2026-11-20 12:15 +06] M7-T01…M7-T05 — Sentences, pending tracker, check pipeline, scheduler, cloud visibility
+- Type: code
+- Files changed:
+  - src/lib/engine/sentences.ts + test (created) — splitter with abbreviation/decimal/initial/quote/ellipsis rules and exact offsets; `sentenceAt`
+  - src/lib/engine/pending.ts + test (created) — PendingTracker over the editor touch rule + text hashes
+  - src/lib/engine/aiChecker.ts + test (created) — checkSentence (protect/prompt/validate/restore, >50% guard, LRU cache) and makeAiSuggestion
+  - src/lib/engine/aiScheduler.ts + test (created) — pause + sentence-end triggers, queue (max 3, same-sentence replace), one in flight, stale abort, skip rules, hard-error pause until settings change
+  - src/lib/engine/gating.test.ts (modified) — autoCloudActive false for local/off
+  - src/App.svelte (modified) — scheduler wired to every transaction; sending state includes scheduler cloud requests; scheduler errors show as a bottom-bar note (cleared when Settings closes)
+  - src/lib/ui/BottomBar.svelte (modified) — optional `note` line
+  - src/lib/ui/SettingsDialog.svelte (modified) — "Each sentence you type will be sent to {host}." warning when cloud auto-check is allowed
+  - src-tauri/src/local/download.rs (modified) — BUG FIX found by a failing M6 test: cancellation was only honoured between body chunks (an unbiased `tokio::select!` could also pick a ready chunk over the fired cancel token, making `cancel_stops_a_slow_download` racy). The initial request is now inside a biased select with the cancel token, and the chunk loop uses `biased;` too. The test now passes deterministically in ~0.1 s (was intermittently running the full 10 s mock delay and failing with checksum_mismatch).
+- Commands run and results:
+  - `npm run verify` → PASS — svelte-check 0 errors 0 warnings, Vitest 160/160 (43 new), cargo fmt/clippy/test (72 unit + 1 integration)
+- Acceptance criteria: covered per-task in the Completed table above.
+- Result: DONE (automated parts)
+- Commit: see git log
+- Follow-ups: M7 [HUMAN] checks; M8-T01 next
 
 ### [2026-11-20 12:03 +06] MILESTONE 6 GATE — Milestone 6 gate checks (automated lines only)
 - Type: test

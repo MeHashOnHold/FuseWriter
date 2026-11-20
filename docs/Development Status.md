@@ -75,7 +75,7 @@
 - Current task ID: M8-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). All 8 milestones are now implemented; what remains is the human verification pass across M1–M8. A Windows release build was produced on 2026-11-20 and its startup crash was fixed on 2026-11-21 (see WINDOWS-BUILD and STARTUP-FIX below); nothing in the plan's checklist changed.
 
 ## Last updated
-- 2026-11-21 01:27 +06
+- 2026-11-21 01:31 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -224,6 +224,26 @@
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-21 01:31 +06] WORKTREE-CLEAN — removed every non-committed file from the project folder
+- Type: config / cleanup
+- Files changed:
+  - docs/Development Status.md (modified) — this entry, Last updated.
+  - Deleted (all gitignored build outputs, not tracked): `dist/`, `node_modules/`, `src-tauri/gen/`, `src-tauri/target/` — the last one held the compiled exe and the NSIS/MSI installers from WINDOWS-BUILD/STARTUP-FIX.
+- What changed: The user asked to remove everything from the project folder except the files in the latest commit. `git clean -fdxn` first showed exactly four directories would be removed; `git clean -fdx` then deleted them. No tracked file was modified or deleted, and `.git/` was left intact. The SSH keys/config created earlier live outside the repo and were not touched.
+- Commands run and results:
+  - `git status --short` → empty (no tracked changes before the cleanup).
+  - `git clean -fdxn` → 4 entries: `dist/`, `node_modules/`, `src-tauri/gen/`, `src-tauri/target/`.
+  - `git clean -fdx` → PASS — all four "Removing ..." lines printed.
+  - `git status --short` → empty after cleanup; `git rev-parse HEAD` → `150428cbc665214eff0793124f408b146bcf5668`.
+  - `Get-ChildItem -Force` top level → only `.git`, `assets`, `docs`, `src`, `src-tauri`, `.gitignore`, `index.html`, `LICENSE`, `package-lock.json`, `package.json`, `README.md`, `svelte.config.js`, `tsconfig.json`, `vite.config.ts` — all tracked at HEAD (plus `.git`).
+- Acceptance criteria:
+  - Only files from the latest commit remain in the project folder → PASS (working tree clean, no untracked/ignored directories).
+  - No tracked files lost → PASS (`git status` clean, HEAD unchanged).
+- Verified by: `git clean -fdxn`, `git clean -fdx`, `git status --short`, `git rev-parse HEAD`, directory listing.
+- Result: DONE
+- Commit: see git log (this log entry is the only tracked file changed)
+- Follow-ups: rebuilding requires installing Node.js again (the portable copy was removed in PUSH-CLEANUP), then `npm ci` and `npm run tauri build`; the SSH key for MeHashOnHold still needs to be added in the GitHub UI (SSH-SETUP). The fixed installers were deleted with `src-tauri/target/` and can be regenerated.
 
 ### [2026-11-21 01:27 +06] SSH-SETUP — two GitHub SSH keys with host aliases (user request, option 3)
 - Type: config

@@ -75,7 +75,7 @@
 - Current task ID: PROJECT-CLOSE (finalized 2026-11-21; no further agent work planned). M8-TGATE remains the last plan gate — it is NOT ticked because its [HUMAN] lines are still OPEN below, per gate rule 3. All 8 milestones are implemented; a Windows release build was produced, its startup crash was fixed, the code and generated icons were pushed to GitHub, and the project folder was reduced to the files in the latest commit.
 
 ## Last updated
-- 2026-11-21 01:47 +06
+- 2026-11-21 01:54 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -226,6 +226,12 @@
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-21 01:54 +06] KEYS-DEFAULT — MeHashOnHold key is now the default for github.com
+- Files: `%USERPROFILE%\.ssh\config`
+- What changed: added a `Host github.com` block using `id_ed25519_mehashonhold` with `IdentitiesOnly yes`, so ordinary `git@github.com:owner/repo.git` remotes authenticate as MeHashOnHold. The `github-stellareve` alias still selects the StellarEVE key; the `github-mehashonhold` alias is unchanged.
+- Check: `ssh -G github.com`, `ssh -G github-mehashonhold`, `ssh -G github-stellareve` → PASS (each shows the intended IdentityFile); `ssh -T git@github.com` → `Permission denied (publickey)` as expected until the key is registered on GitHub.
+- Note: the key itself is account-wide once added to GitHub (works for all repos that account can access); only the alias/remote URL determines which key is offered.
 
 ### [2026-11-21 01:46 +06] KEYS-REDACT — public keys removed from the development log
 - Files: docs/Development Status.md

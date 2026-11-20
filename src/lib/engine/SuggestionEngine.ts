@@ -12,6 +12,8 @@ export interface EngineDeps {
   checkText(text: string, dialect: Dialect): Promise<RawSuggestion[]>;
   dialect(): Dialect;
   isDismissed(s: Suggestion): boolean;
+  /** Called once per session when a check fails (M8-T02). */
+  onError?: () => void;
   setTimeoutFn?: typeof setTimeout;
   clearTimeoutFn?: typeof clearTimeout;
 }
@@ -31,6 +33,7 @@ export class SuggestionEngine {
   private inFlight = 0;
   private waiters: Array<() => void> = [];
   private disposed = false;
+  private errorReported = false;
   private lastDialect: Dialect;
 
   constructor(
@@ -86,6 +89,10 @@ export class SuggestionEngine {
       try {
         raws = await this.deps.checkText(paraText, this.deps.dialect());
       } catch {
+        if (!this.errorReported) {
+          this.errorReported = true;
+          this.deps.onError?.();
+        }
         return; // IPC errors: leave existing marks alone.
       } finally {
         this.release();

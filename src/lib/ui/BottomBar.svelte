@@ -10,6 +10,7 @@
     sending = false,
     words,
     note = "",
+    onDismissNote,
   }: {
     safe: number;
     other: number;
@@ -19,6 +20,7 @@
     sending?: boolean;
     words: number;
     note?: string;
+    onDismissNote?: () => void;
   } = $props();
 
   const left = $derived(
@@ -32,6 +34,11 @@
 
 <footer class="bar bottom">
   <span class="fix-count">{note || left}</span>
+  {#if note && onDismissNote}
+    <button class="note-dismiss" onclick={() => onDismissNote()} aria-label="Dismiss message">
+      ×
+    </button>
+  {/if}
   <span class="spacer"></span>
   <EngineBadge text={badgeText} {offDevice} {autoCloud} {sending} />
   <span class="word-count">{words} words</span>

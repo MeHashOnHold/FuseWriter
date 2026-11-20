@@ -71,11 +71,11 @@
 ---
 
 ## Current milestone and current task ID
-- Current milestone: M7 — Proactive pause-based checking
-- Current task ID: M7-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). Next task: M8-T01.
+- Current milestone: M8 — Polish, settings, packaging
+- Current task ID: M8-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). All 8 milestones are now implemented; what remains is the human verification pass across M1–M8.
 
 ## Last updated
-- 2026-11-20 12:16 +06
+- 2026-11-20 12:57 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -138,9 +138,15 @@
 | M7-T04 | AI scheduler | 2026-11-20 | `npm run test -- aiScheduler` PASS — 13 fake-timer tests: pause fires at pauseMs and not before, typing resets the timer, sentence-end fires after 150 ms, one request at a time, in-flight abort when the sentence is edited, results applied at the TRACKED range after earlier insertions, and every skip rule (too short/long, Harper marks present, composing, URL-only sentence, no provider, cloud without opt-in = zero calls). Wired into App (every transaction, sending state, bottom-bar note on hard errors; hard errors pause checks until settings change). |
 | M7-T05 | Cloud auto-check visibility | 2026-11-20 | Settings now shows "Each sentence you type will be sent to {host}." under the allow-cloud toggle when it is on; the badge's sending state is driven by the scheduler as well as the rewrite panel (cloud only); the bottom bar shows scheduler error lines. gating tests extended (autoCloudActive false for local/off). Window check is [HUMAN], see below. |
 | M7-T06 | Responsiveness measurement | 2026-11-20 | NOT RUN — the plan's method needs a dev window with devtools (Performance tab) and typing by hand; the agent is headless. Recorded as a [HUMAN] item below with the exact steps. By construction the checks run as async IPC calls and results land in a single small dispatch, but no numbers are claimed. |
+| M8-T01 | Open, Save, document name | 2026-11-20 | `npm run verify` PASS (3 new Rust tests: write/read roundtrip with no temp file left behind, non-UTF8 -> `not_utf8`, oversized write -> `file_too_large`). Rust `read_text_file`/`write_text_file` (UTF-8 only, 5 MB cap, temp file + rename, spawn_blocking); Ctrl/Cmd+O / S / Shift+S via a normal-priority CodeMirror keymap; top bar shows the file name (or "Untitled") plus a `•` while unsaved, with Open/Save buttons (added for usability — the plan names the top bar as the file UI); Open replaces the doc via a fresh editor state (undo history reset), clears dismissals, and calls `checkAllNow()`; closing the window with unsaved changes asks "Discard unsaved changes?" via `onCloseRequested`. Window behaviour is [HUMAN], see below. |
+| M8-T02 | Settings polish and error states | 2026-11-20 | `npm run verify` PASS (new engine test: a failing check reports once and the engine keeps working). Dialect select (changing it calls `checkAllNow()`; the engine already clears its cache on dialect change), pause-time slider (300–3000 ms; Rust `validate` clamps the same range), Reset all settings (confirm dialog, restores defaults) and Remove saved API key in a Reset section. AI errors land in the bottom bar as a dismissible one-line note (scheduler errors, rewrite errors, file errors); a failing `check_text` shows "Spelling check unavailable" once and typing is never blocked. Global `:focus-visible` ring added. Window behaviour is [HUMAN], see below. |
+| M8-T03 | Performance measurement | 2026-11-20 | Numbers recorded: Harper perf test (release) median **14.64 ms** for ~330 words (budget < 50 ms) — PASS. Tab fix-all with 200 fixes measured with the plan's unit-test method: **27.12 ms** (budget < 100 ms) — PASS. Rewrite UI updates are rAF-throttled to ~10/s (M5) — PASS by construction. Local server idle stop (default 10 min) — implemented + watcher tests (M6). NOT measured (need a dev window): 5,000-word load time and long-task counts — see Known issues; the M7-T06 [HUMAN] item covers the method. |
+| M8-T04 | Privacy audit | 2026-11-20 | Steps 1–7 PASS with the plan's exact commands: (1) `grep -rn "println!\|eprintln!\|dbg!" src-tauri/src` -> nothing. (2) `grep -rn "console\.log" src` -> nothing. (3) `grep -rn "localStorage\|sessionStorage" src` -> nothing. (4) `grep -rn "fetch(\|XMLHttpRequest\|WebSocket" src` -> nothing. (5) CSP `connect-src` = `ipc: http://ipc.localhost` only (devCsp adds the dev server on 127.0.0.1:1420, dev-only). (6) settings.json cannot contain the key: the Rust `Settings`/`Cloud` structs have no key field at all (the key exists only in the keychain; no command returns it). (7) `cargo tree --depth 1`: every direct dependency is in Plan Section 5 (note: `zip` is 9.8.0 while Section 5 advises matching harper's ^8 — both majors are in the tree; recorded in Decisions at M6). Steps 8–9 are [HUMAN], see below. |
+| M8-T05 | Package the app | 2026-11-20 | `npm run tauri build` PASS — bundles produced in `src-tauri/target/release/bundle/`: `deb/FuseWriter_0.1.0_amd64.deb` (14.55 MiB), `rpm/FuseWriter-0.1.0-1.x86_64.rpm` (14.56 MiB), `appimage/FuseWriter_0.1.0_amd64.AppImage` (88.66 MiB). Clean-machine install + launch is [HUMAN], see below. |
+| M8-T06 | Final definition-of-done run | 2026-11-20 | Section 14 checked line by line — full table in the M8 change-log entry below. Result: 11 lines PASS on automated evidence, 6 lines PARTIAL (their window/offline/clean-machine parts are [HUMAN] and listed below), 1 line NOT MET (line 18, Roadmap ticking — it can only complete after the human verification pass, by the plan's own gate rule). |
 
 ## In progress
-- (nothing — M7-TGATE is waiting on the [HUMAN] items below)
+- (nothing — M8-TGATE is waiting on the [HUMAN] items below)
 
 ## Needs human verification
 (Steps marked [HUMAN] that an agent could not check. A human replaces `OPEN` with `HUMAN-VERIFIED <date>` when done.)
@@ -166,11 +172,17 @@
 - OPEN — M7-T05 / M7 gate: with engine = Cloud and automatic cloud checks allowed, typing shows the pulsing "auto-check ON" badge, and the badge shows "sending…" while a sentence is being checked.
 - OPEN — M7-T06: in `npm run tauri dev` with devtools open (Performance tab), type steadily for 30 seconds with local auto-check on and record the longest task; then repeat with a 5,000-word document pasted in. (Plan method; the agent is headless and recorded no numbers.)
 - OPEN — M7-T04 / M7 gate: with a local model installed and auto-check on, typing a clumsy sentence and pausing shows a purple mark; clicking it shows the card; Accept applies it; typing more text before it does not misplace it.
+- OPEN — M8-T01 / M8 gate: Open a .txt/.md file, edit, Save, reopen — content round-trips; the top bar shows the file name and the unsaved `•`; closing the window with unsaved changes shows the discard prompt; Ctrl/Cmd+O, Ctrl/Cmd+S, Ctrl/Cmd+Shift+S all work.
+- OPEN — M8-T02 / M8 gate: changing the dialect re-checks the text with the new dialect; the pause slider changes how soon purple marks appear; Reset all settings restores defaults.
+- OPEN — M8-T04 steps 8–9: with the network disconnected, typing still shows Harper marks and Tab works, and with engine Off a network monitor shows no app traffic; with a local model running, `netstat -an` / `lsof -i` shows llama-server listening only on 127.0.0.1.
+- OPEN — M8-T05 / DoD line 2: install a bundle on a clean machine or account, launch it, type a sentence with a typo, confirm the mark and the Tab fix.
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
 - Agent environment note: the Linux VM needed the Tauri prerequisites installed (webkit2gtk-4.1 dev etc.) and a locally repacked `libzstd-dev` to work around a distro package version pin (`1.5.5+dfsg2-2build1.1+hatch1`). This affects only the agent's build machine, not the project. (The VM was replaced once during M6 and the prerequisites had to be reinstalled the same way.)
 - M6-T05: the free-space pre-check before downloading is NOT implemented (Plan M6-T05 step 3 allows this): the runtime exposes no portable free-space query and adding a crate for it is forbidden by the same step. A download on a nearly full disk fails partway with a network/write error instead of an upfront `disk_space` error.
+- M8-T03: two Section 11 budgets are unmeasured because they need a dev window with devtools: first-marks time on a 5,000-word document (budget < 1.5 s) and keystroke long tasks (budget: none > 50 ms from checking). The M7-T06 [HUMAN] item has the exact method. Harper (14.64 ms) and fix-all (27.12 ms) budgets are measured and pass.
+- Section 14 line 18 (all Roadmap milestones ticked) is NOT MET and cannot be met by the agent: every gate is PARTIAL while its [HUMAN] lines are open, per gate rule 3. It completes when the human verification pass finishes.
 - M6-T08 finding: Expand mode on very short inputs is effectively refused by validation with the real E2B model — expanding "The app is fast." (16 chars) produced 219–238 chars (ratio ~14x) on both the first attempt and the retry, above the Section 10.4 expand ceiling of 3.5x, so the app reports "Couldn't produce a safe rewrite." Longer inputs are unaffected in ratio terms. Raw outputs are in the M6 change-log entry. (1 of 6 smoke cases — below the plan's threshold for an open question.)
 
 ## Open questions for the human
@@ -206,6 +218,73 @@
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-20 12:57 +06] MILESTONE 8 GATE — Milestone 8 gate checks (automated lines only)
+- Type: test
+- Files changed:
+  - docs/Development Status.md (modified) — this entry, M8 rows, DoD table, [HUMAN] items, known issues
+  - docs/Roadmap.md — NOT ticked: the M8 [HUMAN] lines are OPEN (gate rule 3)
+- Commands run and results:
+  - `npm run verify` → PASS (2026-11-20 12:57 +06: svelte-check 0 errors 0 warnings, Vitest 161/161, cargo fmt/clippy/test — 75 unit + 1 integration)
+  - `npm run tauri build` → PASS (bundles recorded in the M8-T05 row)
+- Acceptance criteria:
+  - Open/Save/unsaved prompt work [HUMAN] → NOT RUN — OPEN below (commands, keymap, name/dirty logic are in and build)
+  - Dialect, pause, reset work; errors never block typing [HUMAN] → automated parts PASS (engine error-once test); window part OPEN below
+  - Performance budgets met or recorded → PASS with two unmeasured budgets recorded as a Known issue with the method
+  - Privacy audit passes → steps 1–7 PASS with outputs recorded; steps 8–9 [HUMAN] OPEN below
+  - `npm run tauri build` produces an installer → PASS (deb/rpm/AppImage); clean-machine run [HUMAN] OPEN below
+  - Every Section 14 line verified with evidence → DONE in M8-T06 (table in the entry below the gate entry)
+- Result: PARTIAL (automated lines PASS; completes when the [HUMAN] lines are verified)
+- Commit: see git log
+- Follow-ups: the human verification pass (M1–M8 items above) is the only remaining work in the plan; after it, tick the milestones in Roadmap.md and Section 14 line 18 completes.
+
+### [2026-11-20 12:57 +06] M8-T06 — Definition of done (Plan Section 14), line by line
+- Type: test
+- Results (evidence in the milestone rows and earlier entries):
+  1. `npm run verify` passes with 0 failures → PASS (12:57 run above).
+  2. Installer produced and launches on a clean machine → PARTIAL: bundles built (M8-T05); clean-machine launch is [HUMAN] OPEN.
+  3. Offline + engine Off: red/blue marks within ~0.3 s → PARTIAL: Harper is fully local and per-paragraph checks are ~15 ms (M8-T03); the offline window check is [HUMAN] (M8-T04 step 8).
+  4. Tab fixes all safe fixes in one step, one undo restores; Tab inert when clean → PASS (M3 tests: single dispatch counted, single undo, fall-through).
+  5. Card shows old/new/reason/Accept/Dismiss; both work → PASS automated (M3 tests); visual position is [HUMAN] (M3 items).
+  6. Spelling red wavy, grammar blue wavy, AI solid purple; Tab never applies purple → PASS (CSS classes + fixAll only applies safeToAutoApply, always false for AI marks; M3/M7 tests).
+  7. No marks inside URLs, emails, or code → PASS (Harper fixture cases, M2).
+  8. Five modes + custom presets with diff, per-change accept/reject, one-undo Apply → PASS (M5 tests).
+  9. Frozen words and placeholders survive, or the rewrite is refused untouched → PASS (M5 protect/validate tests; M6 smoke protection case with the real model).
+  10. Summarize, word count, reading time, readability → PASS (M5 stats/tools tests).
+  11. Cloud base URL/key/model settable; Test connection works; key not in settings.json; first use asks consent → PASS automated (M4 wiremock + policy tests; M8-T04 step 6: no key field exists in the settings structs); real-key use is [HUMAN] (M4 items).
+  12. Local E2B/E4B download with progress, verify, start, use, idle/exit stop, remove → PASS automated + headless real-model run (M6-T08); window flow is [HUMAN] (M6 items).
+  13. Proactive checking: pause/sentence-end, only the changed sentence, stale cancelled, cached, marks stay in place → PASS (M7 scheduler/checker/tracker tests).
+  14. Automatic cloud checks off by default; visible indicator when on → PASS (defaults allowCloud=false; gating tests; badge states; M7-T05 settings warning).
+  15. UI always shows the active engine and whether text leaves the device → PASS (EngineBadge in the bottom bar; M4).
+  16. Performance budgets met or recorded as Known issues → PASS as "recorded": Harper 14.64 ms and fix-all 27.12 ms measured; the two devtools-only budgets are a Known issue with the method (M8-T03).
+  17. Privacy audit (M8-T04) passes → PASS steps 1–7 with outputs; steps 8–9 [HUMAN].
+  18. All Roadmap statuses ticked with evidence → NOT MET: all 8 gates are PARTIAL pending the human verification pass (gate rule 3 forbids ticking earlier). Evidence for every automated line is in this file.
+- Result: DONE (the run itself); the project completes when the [HUMAN] pass finishes.
+
+### [2026-11-20 12:52 +06] M8-T01…M8-T05 — Files, settings polish, performance, privacy audit, packaging
+- Type: code
+- Files changed:
+  - src-tauri/src/commands/files.rs (created) — read_text_file / write_text_file (UTF-8, 5 MB, temp + rename) with tests
+  - src-tauri/src/error.rs, commands/mod.rs, lib.rs (modified) — `not_utf8` / `file_too_large` codes; commands registered
+  - src/lib/ipc.ts (modified) — readTextFile / writeTextFile
+  - src/lib/editor/createEditor.ts (modified) — extensions extracted into `createDocState` (fresh state for Open, undo reset); file keymap (Mod-o / Mod-s / Mod-Shift-s, normal priority)
+  - src/App.svelte (modified) — file state (path, saved hash, dirty), Open/Save flows, close-requested discard prompt, dialect-change re-check, all AI/file errors mirrored to the dismissible bottom-bar note
+  - src/lib/ui/TopBar.svelte (modified) — Open/Save buttons; name shows the document name + unsaved dot
+  - src/lib/ui/SettingsDialog.svelte (modified) — Checking fieldset (dialect select), pause slider, Reset section (reset settings, remove API key)
+  - src/lib/ui/BottomBar.svelte (modified) — dismiss button on the note
+  - src/lib/engine/SuggestionEngine.ts + test (modified) — `onError` dep, reported once per session
+  - src/app.css (modified) — global `:focus-visible` ring
+  - README.md (modified) — status line updated (it still said Milestone 1)
+  - Agent environment note: the VM was replaced again during M8; Tauri prerequisites were reinstalled (the apt mirror list had a hanging mirror, removed; libzstd-dev repack reapplied)
+- Commands run and results:
+  - `npm run verify` → PASS — svelte-check 0 errors 0 warnings, Vitest 161/161, cargo fmt/clippy/test (75 unit + 1 integration)
+  - `cargo test --release -- --ignored perf --nocapture` → `perf_300_words median over 50 runs: 14.64 ms`
+  - `npm run tauri build` → PASS — deb 14.55 MiB, rpm 14.56 MiB, AppImage 88.66 MiB
+  - Privacy audit greps → outputs in the M8-T04 row
+- Acceptance criteria: per-task in the Completed table above.
+- Result: DONE (automated parts)
+- Commit: see git log
+- Follow-ups: human verification pass; M8 [HUMAN] checks
 
 ### [2026-11-20 12:16 +06] MILESTONE 7 GATE — Milestone 7 gate checks (automated lines only)
 - Type: test

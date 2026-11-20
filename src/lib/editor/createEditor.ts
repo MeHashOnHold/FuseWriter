@@ -25,15 +25,32 @@ const theme = EditorView.theme({
   "&.cm-focused": { outline: "none" },
 });
 
-export function createEditor(
-  parent: HTMLElement,
+export interface FileKeyHandlers {
+  open(): void;
+  save(): void;
+  saveAs(): void;
+}
+
+export function createDocState(
+  doc: string,
   onChange: (u: ViewUpdate) => void,
   onMarkClick?: OnMarkClick,
-): EditorView {
-  const state = EditorState.create({
+  fileKeys?: FileKeyHandlers,
+): EditorState {
+  return EditorState.create({
+    doc,
     extensions: [
       history(),
       tabFixKeymap,
+      ...(fileKeys
+        ? [
+            keymap.of([
+              { key: "Mod-o", run: () => (fileKeys.open(), true) },
+              { key: "Mod-s", run: () => (fileKeys.save(), true) },
+              { key: "Mod-Shift-s", run: () => (fileKeys.saveAs(), true) },
+            ]),
+          ]
+        : []),
       keymap.of([...defaultKeymap, ...historyKeymap]),
       EditorView.lineWrapping,
       placeholder("Start writing…"),
@@ -62,5 +79,14 @@ export function createEditor(
       marksDecorations,
     ],
   });
+}
+
+export function createEditor(
+  parent: HTMLElement,
+  onChange: (u: ViewUpdate) => void,
+  onMarkClick?: OnMarkClick,
+  fileKeys?: FileKeyHandlers,
+): EditorView {
+  const state = createDocState("", onChange, onMarkClick, fileKeys);
   return new EditorView({ state, parent });
 }

@@ -30,6 +30,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::check::check_text,
+            commands::files::read_text_file,
+            commands::files::write_text_file,
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::secrets::set_api_key,

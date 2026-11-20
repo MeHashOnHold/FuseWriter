@@ -3,16 +3,23 @@
   import { Transaction } from "@codemirror/state";
   import type { EditorView } from "@codemirror/view";
   import { isolateHistory } from "@codemirror/commands";
-  import { createEditor, type MarkAnchor } from "./lib/editor/createEditor";
+  import {
+    createDocState,
+    createEditor,
+    type MarkAnchor,
+  } from "./lib/editor/createEditor";
   import { marksField, removeMarks, setMarks } from "./lib/editor/suggestionField";
   import { countFixes } from "./lib/editor/status";
   import { applyFix } from "./lib/editor/applyFix";
-  import { dismiss, isDismissed } from "./lib/editor/dismissed";
+  import { clearDismissed, dismiss, isDismissed } from "./lib/editor/dismissed";
   import { SuggestionEngine, type EditorHost } from "./lib/engine/SuggestionEngine";
   import { AiScheduler } from "./lib/engine/aiScheduler";
   import { splitParagraphs } from "./lib/engine/paragraphs";
   import { autoCloudActive, engineLabel } from "./lib/engine/gating";
-  import { checkText } from "./lib/ipc";
+  import { checkText, readTextFile, writeTextFile } from "./lib/ipc";
+  import { hashText } from "./lib/engine/hash";
+  import { ask, open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { loadSettings, saveSettings, settings } from "./lib/settings/store.svelte";
   import { getAiProvider } from "./lib/providers/registry";
   import { refreshLocalStatus } from "./lib/providers/localStatus.svelte";
@@ -56,7 +63,20 @@
   const autoCloud = $derived(autoCloudActive(settings));
   const rewriteDisabled = $derived(getAiProvider(settings) === null);
   let aiSending = $state(false);
-  let schedulerNote = $state("");
+  let barNote = $state("");
+  let filePath = $state<string | null>(null);
+  let savedHash = $state(hashText(""));
+  let docText = $state("");
+  const fileName = $derived(
+    filePath ? (filePath.split(/[\\/]/).pop() ?? "Untitled") : "Untitled",
+  );
+  const dirty = $derived(hashText(docText) !== savedHash);
+  let fileActions: {
+    open(): void;
+    save(): void;
+    saveAs(): void;
+  } | null = null;
+  let engineRef: SuggestionEngine | undefined;
   const sending = $derived((!!panel?.busy || aiSending) && settings.engine === "cloud");
   const aiProvider = $derived(getAiProvider(settings));
 
@@ -192,6 +212,7 @@
       }
       const code = e instanceof AiError ? e.code : "network";
       if (panel) panel = { ...panel, busy: false, error: aiErrorText(code) };
+      barNote = aiErrorText(code);
     }
   }
 
@@ -280,27 +301,110 @@
       },
     };
 
-    view = createEditor(
-      hostEl,
-      (u) => {
-        for (const tr of u.transactions) scheduler?.onDocChanged(tr);
-        if (u.docChanged) {
-          engine?.onDocChanged();
-          card = null;
-        }
-        const counts = countFixes(u.state.field(marksField));
-        safe = counts.safe;
-        other = counts.other;
-        words = wordCount(u.state.doc.toString());
-      },
-      onMarkClick,
-    );
+    const fileErrorText = (e: unknown): string =>
+      e === "not_utf8"
+        ? "That file is not valid UTF-8 text."
+        : e === "file_too_large"
+          ? "That file is larger than 5 MB."
+          : "The file could not be opened or saved.";
+
+    const onEditorUpdate = (u: {
+      docChanged: boolean;
+      transactions: readonly Transaction[];
+      state: EditorView["state"];
+    }) => {
+      for (const tr of u.transactions) scheduler?.onDocChanged(tr);
+      if (u.docChanged) {
+        engine?.onDocChanged();
+        card = null;
+      }
+      const counts = countFixes(u.state.field(marksField));
+      safe = counts.safe;
+      other = counts.other;
+      docText = u.state.doc.toString();
+      words = wordCount(docText);
+    };
+
+    const fileKeyHandlers = {
+      open: () => fileActions?.open(),
+      save: () => fileActions?.save(),
+      saveAs: () => fileActions?.saveAs(),
+    };
+
+    async function doOpen(): Promise<void> {
+      const picked = await openDialog({
+        multiple: false,
+        directory: false,
+        filters: [{ name: "Text", extensions: ["txt", "md"] }],
+      });
+      if (typeof picked !== "string" || !view) return;
+      try {
+        const text = await readTextFile(picked);
+        view.setState(createDocState(text, onEditorUpdate, onMarkClick, fileKeyHandlers));
+        filePath = picked;
+        savedHash = hashText(text);
+        docText = text;
+        card = null;
+        clearDismissed();
+        engine?.checkAllNow();
+      } catch (e) {
+        barNote = fileErrorText(e);
+      }
+    }
+
+    async function doSave(saveAs: boolean): Promise<void> {
+      if (!view) return;
+      let path = filePath;
+      if (saveAs || !path) {
+        const picked = await saveDialog({
+          filters: [{ name: "Text", extensions: ["txt", "md"] }],
+          defaultPath: path ?? "Untitled.txt",
+        });
+        if (typeof picked !== "string") return;
+        path = picked;
+      }
+      const text = view.state.doc.toString();
+      try {
+        await writeTextFile(path, text);
+        filePath = path;
+        savedHash = hashText(text);
+      } catch (e) {
+        barNote = fileErrorText(e);
+      }
+    }
+
+    fileActions = {
+      open: () => void doOpen(),
+      save: () => void doSave(false),
+      saveAs: () => void doSave(true),
+    };
+
+    view = createEditor(hostEl, onEditorUpdate, onMarkClick, fileKeyHandlers);
+
+    let unlistenClose: (() => void) | undefined;
+    void getCurrentWindow()
+      .onCloseRequested(async (event) => {
+        if (!dirty) return;
+        event.preventDefault();
+        const ok = await ask("Discard unsaved changes?", {
+          title: "FuseWriter",
+          kind: "warning",
+        });
+        if (ok) await getCurrentWindow().destroy();
+      })
+      .then((u) => {
+        unlistenClose = u;
+      });
 
     engine = new SuggestionEngine(host, {
       checkText: (text, dialect) => checkText(text, dialect).then((r) => r.suggestions),
       dialect: () => settings.dialect,
       isDismissed,
+      onError: () => {
+        barNote = "Spelling check unavailable";
+      },
     });
+    engineRef = engine;
 
     scheduler = new AiScheduler(host, {
       settings: () => settings,
@@ -314,7 +418,7 @@
         aiSending = b;
       },
       onError: (msg) => {
-        schedulerNote = msg;
+        barNote = msg;
       },
     });
 
@@ -327,6 +431,7 @@
     return () => {
       el.removeEventListener("scroll", onScroll, true);
       setConsentHandler(undefined);
+      unlistenClose?.();
       scheduler?.dispose();
       engine?.dispose();
       view?.destroy();
@@ -339,7 +444,9 @@
 
 <div class="app">
   <TopBar
-    name="Untitled"
+    name={fileName + (dirty ? " •" : "")}
+    onOpen={() => fileActions?.open()}
+    onSave={() => fileActions?.save()}
     onSettings={() => (settingsOpen = true)}
     onRewrite={() => void onRewrite()}
     {rewriteDisabled}
@@ -393,7 +500,8 @@
     {autoCloud}
     {sending}
     {words}
-    note={schedulerNote}
+    note={barNote}
+    onDismissNote={() => (barNote = "")}
   />
 </div>
 
@@ -401,8 +509,9 @@
   open={settingsOpen}
   onClose={() => {
     settingsOpen = false;
-    schedulerNote = "";
+    barNote = "";
   }}
+  onDialectChange={() => engineRef?.checkAllNow()}
 />
 {#if consentRequest}
   <ConsentDialog host={consentRequest.host} onAllow={onConsentAllow} onCancel={onConsentCancel} />

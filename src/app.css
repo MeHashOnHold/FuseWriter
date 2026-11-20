@@ -77,3 +77,8 @@ button:hover { background: var(--surface); border-color: var(--border); }
 .qw-spell   { text-decoration: underline wavy var(--mark-spell);   text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 .qw-grammar { text-decoration: underline wavy var(--mark-grammar); text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
 .qw-ai      { text-decoration: underline solid var(--mark-ai);     text-decoration-thickness: 2px;   text-underline-offset: 3px; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

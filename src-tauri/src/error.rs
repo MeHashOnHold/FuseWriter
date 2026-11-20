@@ -19,6 +19,10 @@ pub enum AppError {
     BadArchive,
     #[error("Not enough free disk space.")]
     DiskSpace,
+    #[error("The file is not valid UTF-8 text.")]
+    NotUtf8,
+    #[error("The file is larger than 5 MB.")]
+    FileTooLarge,
     #[error("Internal error.")]
     Internal,
     #[error("{}", .0.message())]
@@ -36,6 +40,8 @@ impl AppError {
             AppError::ChecksumMismatch => "checksum_mismatch",
             AppError::BadArchive => "bad_archive",
             AppError::DiskSpace => "disk_space",
+            AppError::NotUtf8 => "not_utf8",
+            AppError::FileTooLarge => "file_too_large",
             AppError::Internal => "internal",
             AppError::Ai(code) => code.as_str(),
         }

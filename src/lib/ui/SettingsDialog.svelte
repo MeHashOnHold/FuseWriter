@@ -1,10 +1,16 @@
 <script lang="ts">
   import { aiTestConnection, deleteApiKey, hasApiKey, setApiKey } from "../ipc";
   import { saveSettings, settings } from "../settings/store.svelte";
+  import { DEFAULT_SETTINGS } from "../settings/defaults";
+  import { ask } from "@tauri-apps/plugin-dialog";
   import LocalSection from "./LocalSection.svelte";
   import PresetEditor from "./PresetEditor.svelte";
 
-  let { open, onClose }: { open: boolean; onClose: () => void } = $props();
+  let {
+    open,
+    onClose,
+    onDialectChange,
+  }: { open: boolean; onClose: () => void; onDialectChange?: () => void } = $props();
 
   let dialogEl: HTMLDialogElement | undefined = $state();
   const cloudHost = $derived.by(() => {
@@ -54,6 +60,17 @@
     await deleteApiKey().catch(() => undefined);
     keySaved = false;
     apiKeyField = "";
+  }
+
+  async function onReset(): Promise<void> {
+    const ok = await ask("Reset all settings to defaults?", {
+      title: "FuseWriter",
+      kind: "warning",
+    });
+    if (!ok) return;
+    Object.assign(settings, structuredClone(DEFAULT_SETTINGS));
+    await saveSettings().catch(() => undefined);
+    onDialectChange?.();
   }
 
   async function onSave(): Promise<void> {
@@ -116,10 +133,33 @@
   {/if}
 
   <fieldset>
+    <legend>Checking</legend>
+    <label>
+      Dialect
+      <select bind:value={settings.dialect} onchange={() => onDialectChange?.()}>
+        <option value="american">American</option>
+        <option value="british">British</option>
+        <option value="canadian">Canadian</option>
+        <option value="australian">Australian</option>
+      </select>
+    </label>
+  </fieldset>
+
+  <fieldset>
     <legend>Automatic checks</legend>
     <label>
       <input type="checkbox" bind:checked={settings.autoCheck.enabled} />
       Check sentences automatically
+    </label>
+    <label>
+      Pause before checking: {settings.autoCheck.pauseMs} ms
+      <input
+        type="range"
+        min="300"
+        max="3000"
+        step="100"
+        bind:value={settings.autoCheck.pauseMs}
+      />
     </label>
     {#if settings.engine === "cloud"}
       <label>
@@ -132,6 +172,14 @@
         </p>
       {/if}
     {/if}
+  </fieldset>
+
+  <fieldset>
+    <legend>Reset</legend>
+    <button onclick={() => void onReset()}>Reset all settings</button>
+    <button onclick={() => void onRemoveKey()} disabled={!keySaved}>
+      Remove saved API key
+    </button>
   </fieldset>
 
   <fieldset>

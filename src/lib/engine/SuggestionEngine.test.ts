@@ -144,3 +144,27 @@ describe("SuggestionEngine", () => {
     engine.dispose();
   });
 });
+
+describe("SuggestionEngine error reporting (M8-T02)", () => {
+  it("reports a failing check once, and keeps working afterwards", async () => {
+    let errors = 0;
+    let fail = true;
+    const host: EditorHost = { getText: () => "I has teh ball.", applyMarks: () => undefined };
+    const engine = new SuggestionEngine(host, {
+      checkText: () => (fail ? Promise.reject(new Error("ipc down")) : Promise.resolve([])),
+      dialect: () => "american",
+      isDismissed: () => false,
+      onError: () => errors++,
+    });
+    engine.checkAllNow();
+    await flushMicrotasks();
+    engine.checkAllNow();
+    await flushMicrotasks();
+    expect(errors).toBe(1);
+    fail = false;
+    engine.checkAllNow();
+    await flushMicrotasks();
+    expect(errors).toBe(1);
+    engine.dispose();
+  });
+});

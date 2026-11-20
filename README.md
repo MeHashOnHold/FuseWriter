@@ -2,7 +2,7 @@
 
 A small, private desktop writing app. It checks spelling and grammar while you type — a private alternative to Grammarly and QuillBot. Local checking with Harper, optional AI (local Gemma 4 via llama.cpp, or any OpenAI-compatible cloud API the user configures). No server, no account, no telemetry.
 
-**Status:** prototype — Milestone 1 (project skeleton and docs) in progress. See `docs/Development Status.md` for the current state.
+**Status:** prototype — all 8 build milestones are implemented (editor with Harper marks, Tab fix-all, suggestion cards, cloud + local AI rewrites with diff view, proactive pause-based checking, file open/save, packaging). Automated checks pass; the window checks listed in `docs/Development Status.md` under "Needs human verification" are still open. See that file for the current state.
 
 ## Docs
 

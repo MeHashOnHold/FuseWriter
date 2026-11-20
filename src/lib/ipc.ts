@@ -109,3 +109,11 @@ export function localStop(): Promise<void> {
 export function localRemoveRuntime(): Promise<void> {
   return invoke("local_remove_runtime");
 }
+
+export function readTextFile(path: string): Promise<string> {
+  return invoke("read_text_file", { path });
+}
+
+export function writeTextFile(path: string, text: string): Promise<void> {
+  return invoke("write_text_file", { path, text });
+}

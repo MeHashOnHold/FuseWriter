@@ -11,6 +11,8 @@
     rewriteDisabled = true,
     getText,
     aiProvider,
+    onOpen,
+    onSave,
   }: {
     name: string;
     onSettings: () => void;
@@ -18,11 +20,15 @@
     rewriteDisabled?: boolean;
     getText: () => string;
     aiProvider: AiProvider | null;
+    onOpen?: () => void;
+    onSave?: () => void;
   } = $props();
 </script>
 
 <header class="bar top">
   <span class="doc-name">{name}</span>
+  <button onclick={() => onOpen?.()} title="Open (Ctrl+O)">Open</button>
+  <button onclick={() => onSave?.()} title="Save (Ctrl+S)">Save</button>
   <span class="spacer"></span>
   <ModePicker />
   <button onclick={() => onRewrite()} disabled={rewriteDisabled} title="Rewrite with AI">

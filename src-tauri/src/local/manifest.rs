@@ -113,8 +113,23 @@ mod tests {
 
     #[test]
     fn platform_key_matches_this_build() {
-        // This build runs on linux x86_64 in CI.
-        assert_eq!(current_platform_key(), Some("linux-x86_64"));
+        // The expected key follows the target this test binary was compiled
+        // for: CI builds on Linux, but local builds also run on Windows/macOS.
+        let expected = if cfg!(target_os = "windows") && cfg!(target_arch = "x86_64") {
+            Some("windows-x86_64")
+        } else if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+            Some("macos-aarch64")
+        } else if cfg!(target_os = "macos") && cfg!(target_arch = "x86_64") {
+            Some("macos-x86_64")
+        } else if cfg!(target_os = "linux") && cfg!(target_arch = "x86_64") {
+            Some("linux-x86_64")
+        } else {
+            None
+        };
+        assert_eq!(current_platform_key(), expected);
+        if let Some(key) = expected {
+            assert!(Manifest::embedded().unwrap().asset(key).is_some());
+        }
     }
 
     #[test]

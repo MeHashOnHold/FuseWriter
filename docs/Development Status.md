@@ -72,10 +72,10 @@
 
 ## Current milestone and current task ID
 - Current milestone: M8 — Polish, settings, packaging
-- Current task ID: M8-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). All 8 milestones are now implemented; what remains is the human verification pass across M1–M8.
+- Current task ID: M8-TGATE (gate checks run; milestone NOT ticked — [HUMAN] lines are still OPEN below, per gate rule 3). All 8 milestones are now implemented; what remains is the human verification pass across M1–M8. A Windows release build was produced on 2026-11-20 (see WINDOWS-BUILD below); nothing in the plan's checklist changed.
 
 ## Last updated
-- 2026-11-20 12:57 +06
+- 2026-11-20 18:09 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -144,6 +144,7 @@
 | M8-T04 | Privacy audit | 2026-11-20 | Steps 1–7 PASS with the plan's exact commands: (1) `grep -rn "println!\|eprintln!\|dbg!" src-tauri/src` -> nothing. (2) `grep -rn "console\.log" src` -> nothing. (3) `grep -rn "localStorage\|sessionStorage" src` -> nothing. (4) `grep -rn "fetch(\|XMLHttpRequest\|WebSocket" src` -> nothing. (5) CSP `connect-src` = `ipc: http://ipc.localhost` only (devCsp adds the dev server on 127.0.0.1:1420, dev-only). (6) settings.json cannot contain the key: the Rust `Settings`/`Cloud` structs have no key field at all (the key exists only in the keychain; no command returns it). (7) `cargo tree --depth 1`: every direct dependency is in Plan Section 5 (note: `zip` is 9.8.0 while Section 5 advises matching harper's ^8 — both majors are in the tree; recorded in Decisions at M6). Steps 8–9 are [HUMAN], see below. |
 | M8-T05 | Package the app | 2026-11-20 | `npm run tauri build` PASS — bundles produced in `src-tauri/target/release/bundle/`: `deb/FuseWriter_0.1.0_amd64.deb` (14.55 MiB), `rpm/FuseWriter-0.1.0-1.x86_64.rpm` (14.56 MiB), `appimage/FuseWriter_0.1.0_amd64.AppImage` (88.66 MiB). Clean-machine install + launch is [HUMAN], see below. |
 | M8-T06 | Final definition-of-done run | 2026-11-20 | Section 14 checked line by line — full table in the M8 change-log entry below. Result: 11 lines PASS on automated evidence, 6 lines PARTIAL (their window/offline/clean-machine parts are [HUMAN] and listed below), 1 line NOT MET (line 18, Roadmap ticking — it can only complete after the human verification pass, by the plan's own gate rule). |
+| WINDOWS-BUILD | Windows release build + cross-platform test fix | 2026-11-20 | `npm run verify` PASS (svelte-check 0 errors, Vitest 161/161, cargo fmt/clippy/test 75+1). `npm run tauri build` PASS — NSIS `FuseWriter_0.1.0_x64-setup.exe` (10.78 MiB) and MSI `FuseWriter_0.1.0_x64_en-US.msi` (13.25 MiB). Clean-machine install/launch is [HUMAN], see below. |
 
 ## In progress
 - (nothing — M8-TGATE is waiting on the [HUMAN] items below)
@@ -176,6 +177,7 @@
 - OPEN — M8-T02 / M8 gate: changing the dialect re-checks the text with the new dialect; the pause slider changes how soon purple marks appear; Reset all settings restores defaults.
 - OPEN — M8-T04 steps 8–9: with the network disconnected, typing still shows Harper marks and Tab works, and with engine Off a network monitor shows no app traffic; with a local model running, `netstat -an` / `lsof -i` shows llama-server listening only on 127.0.0.1.
 - OPEN — M8-T05 / DoD line 2: install a bundle on a clean machine or account, launch it, type a sentence with a typo, confirm the mark and the Tab fix.
+- OPEN — WINDOWS-BUILD: run `FuseWriter_0.1.0_x64-setup.exe` (or the MSI) on this Windows machine or a clean account, launch FuseWriter, and type `I recieve teh package` to confirm the two red marks and the Tab fix in the packaged app. (Agent built and verified the artifacts; it did not run the installer.)
 
 ## Known issues and bugs
 - The GitHub copy of this repo does not include the generated app icons (`src-tauri/icons/*.png`, `*.ico`, `*.icns`): the connector used to push can only upload text files. The icon source `assets/app-icon.svg` IS committed; regenerate the icons after cloning with `npx tauri icon assets/app-icon.svg` (also noted in README.md). The local working copy has the generated icons committed in b185ff5.
@@ -215,9 +217,37 @@
 - 2026-11-20, M2-T06, Harper flags three spaces (`"   "`) as a Formatting lint ("French spaces are generally not recommended.", replacement `" "`), which conflicts with Plan.md 9.3 case 11 (whitespace-only input -> no marks). `run_check` therefore returns no suggestions for empty or whitespace-only text. The engine never sends such paragraphs anyway (splitParagraphs skips them); this only affects direct command calls.
 - 2026-11-20, M2-T06, perf: `cargo test --release -- --ignored perf` PASS — median 14.54 ms over 50 runs of `run_check` on ~330 words with 5 typos (agent VM, release build). Budget is 50 ms.
 - 2026-11-20, M2-T04, the four protection regexes are compiled once into `LazyLock<Option<Regex>>` (via `.ok()`) instead of `expect(...)`, keeping the code free of `expect` outside tests per Plan rule 16; a compile failure would return no ranges and fail the fixture tests loudly.
+- 2026-11-20, WINDOWS-BUILD, Windows tool versions: node v26.13.1 / npm 11.20.0 (portable zip in the approved temp dir — neither was installed system-wide), rustc/cargo 1.99.1 `x86_64-pc-windows-msvc`, Visual Studio 2022 Community MSVC 14.44.35207, WebView2 157.0.4341.60. This differs from the Linux CI versions recorded at M1-T01; both build successfully.
+- 2026-11-20, WINDOWS-BUILD, `bundle.targets = "all"` on Windows produced MSI + NSIS only (no AppX/signing, as expected for an unsigned app). Tauri's CLI auto-downloaded and hash-validated WiX 3.14.1 and NSIS 3.13; no manual install of either is needed on a fresh Windows machine with MSVC and WebView2 present. Generated icons were recreated locally with `npx tauri icon assets/app-icon.svg` and left untracked, per README.
 
 ## Change log (newest first)
 (Add new entries at the TOP of this section.)
+
+### [2026-11-20 18:09 +06] WINDOWS-BUILD — Windows release build, installers, cross-platform test fix
+- Type: config (plus a test fix)
+- Files changed:
+  - src-tauri/src/local/manifest.rs (modified) — `platform_key_matches_this_build` now derives the expected key from compile-time `cfg!` target flags (and checks that the embedded manifest has an asset for it) instead of assuming the Linux CI host.
+  - docs/Development Status.md (modified) — this entry, WINDOWS-BUILD table row, Last updated, new [HUMAN] item.
+  - src-tauri/icons/*.png, icon.ico, icon.icns, ios/, android/mipmap-*/ (generated, untracked) — regenerated from `assets/app-icon.svg` with `npx tauri icon`; this checkout did not include them (Known issue). Not committed, per README.
+- What changed: Built and packaged FuseWriter on Windows. Node was not on PATH, so a portable Node.js LTS (v26.13.1, npm 11.20.0) was installed under `%LOCALAPPDATA%\Temp\opencode\tools` and used for all npm commands; `npm ci` installed exactly the lockfile packages. The first `npm run verify` found one real cross-platform bug in a Rust test that hard-coded Linux; the fix makes the assertion target-aware. Tauri downloaded WiX 3.14.1 and NSIS 3.13 itself and hash-validated both, so no extra manual tool install was needed.
+- Commands run and results:
+  - `npm ci` → PASS — "added 78 packages", 0 vulnerabilities.
+  - `npx tauri icon assets/app-icon.svg` → PASS — generated PNG/ICO/ICNS plus iOS/Android/AppX icons.
+  - `npm run verify` (first run) → FAIL — `local::manifest::tests::platform_key_matches_this_build`: left `Some("windows-x86_64")`, right `Some("linux-x86_64")`; 74 passed, 1 failed (frontend checks passed).
+  - `npm run rust:check` (after fix) → PASS — cargo fmt/clippy/test clean, 75 unit + 1 integration test passed.
+  - `npm run verify` (final) → PASS — svelte-check 0 errors/0 warnings; Vitest 22 files, 161/161 tests; cargo fmt/clippy/test 75 unit + 1 integration passed.
+  - `npm run tauri build` → PASS — release profile finished in 14m 36s; `fusewriter.exe` built; 2 bundles produced.
+- Artifacts (in `src-tauri/target/release/bundle/`):
+  - `nsis/FuseWriter_0.1.0_x64-setup.exe` — 10.78 MiB, sha256 `6c6d969a87d2108e43d7a8bbd6d7a699bc93c5389bcec444ec3a62ff372ae624`.
+  - `msi/FuseWriter_0.1.0_x64_en-US.msi` — 13.25 MiB, sha256 `79671e200b006a5969f3e9fb4c413c40c1cfa473cfab80f4b9ac6f39147e7021`.
+- Acceptance criteria:
+  - `npm run verify` passes with 0 failures → PASS (final run above).
+  - `npm run tauri build` produces an installer → PASS (NSIS exe + MSI, both produced and hashed).
+  - Installer launches and works on a clean machine → NOT RUN — new [HUMAN] item above.
+- Verified by: `npm ci`, `npm run verify`, `npm run tauri build`, `Get-FileHash`, `Get-ChildItem`.
+- Result: DONE (automated); install/launch is [HUMAN].
+- Commit: see git log (WINDOWS-BUILD commit; generated icons intentionally left untracked)
+- Follow-ups: human verification pass (M1–M8 plus the Windows installer item); regenerate icons on a fresh clone before building.
 
 ### [2026-11-20 12:57 +06] MILESTONE 8 GATE — Milestone 8 gate checks (automated lines only)
 - Type: test

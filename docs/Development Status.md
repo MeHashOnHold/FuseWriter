@@ -75,7 +75,7 @@
 - Current task ID: PROJECT-CLOSE (finalized 2026-11-21; no further agent work planned). M8-TGATE remains the last plan gate — it is NOT ticked because its [HUMAN] lines are still OPEN below, per gate rule 3. All 8 milestones are implemented; a Windows release build was produced, its startup crash was fixed, the code and generated icons were pushed to GitHub, and the project folder was reduced to the files in the latest commit.
 
 ## Last updated
-- 2026-11-21 02:03 +06
+- 2026-11-21 02:04 +06
 
 ## Completed tasks
 | Task ID | Short description | Date | Verification result |
@@ -232,14 +232,15 @@
 - What changed: `dbb7ad8` was pushed to `main` using the stored MeHashOnHold HTTPS credential (SSH is gone, so HTTPS + token is the only auth path until a new key exists). `refs/remotes/origin/main` was then corrected locally, since pushing to a raw URL does not update the tracking ref for `origin`.
 - Check: `git credential fill` (username=MeHashOnHold) → credential found; `git push <token URL> main` → `af18978..dbb7ad8  main -> main`; GitHub API `GET /repos/MeHashOnHold/FuseWriter/commits/main` → `dbb7ad8 - KEYS-RESET: remove all SSH keys and repoint origin off the deleted alias`.
 - Note: the token was passed inline and never written to disk or echoed in full.
-- Still open for human: delete the two old public keys at https://github.com/settings/keys.
+- Correction (human, 2026-11-21 02:04): the public keys were never registered on GitHub in the first place, so there is nothing to revoke server-side.
 
 ### [2026-11-21 02:01 +06] KEYS-RESET — all SSH keys removed at human request (full reset)
 - Files deleted: `%USERPROFILE%\.ssh\id_ed25519_mehashonhold`, `id_ed25519_mehashonhold.pub`, `id_ed25519_stellareve`, `id_ed25519_stellareve.pub`, `config`, `known_hosts`.
 - What changed: the human asked for a clean slate. All keypairs, the host-alias config, and `known_hosts` were deleted; `C:\Users\Creative Workshop\.ssh` is now an empty directory. No keys were loaded in `ssh-agent` (agent not running), so nothing else needed clearing. A recursive scan of `%USERPROFILE%` found no other real private keys — only CA bundles and library test fixtures.
 - Check: `Get-ChildItem -Force $env:USERPROFILE\.ssh` after deletion → empty. `ssh-add -l` → `Error connecting to agent: No such file or directory` (no agent, no loaded keys).
 - Repo impact: `origin` was pointing at the deleted alias `git@github-mehashonhold:...`; it was repointed to `git@github.com:MeHashOnHold/FuseWriter.git` and the stale `refs/remotes/origin/main` (ce45489) was corrected to the real remote head af18978. No push is possible until a new key exists.
-- Follow-up for human: delete the two old public keys from https://github.com/settings/keys (they are still registered server-side), then generate a fresh key when ready.
+- Server-side state: the public keys were NEVER added to GitHub (confirmed by the human 2026-11-21 02:04), consistent with every `ssh -T git@github.com` returning `Permission denied (publickey)`. Nothing to revoke on GitHub; all pushes so far used the stored HTTPS token.
+- Follow-up: generate a fresh key only if SSH is wanted; otherwise HTTPS + token keeps working.
 
 ### [2026-11-21 01:54 +06] KEYS-DEFAULT — MeHashOnHold key is now the default for github.com
 - Files: `%USERPROFILE%\.ssh\config`
